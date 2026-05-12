@@ -37,6 +37,7 @@ yarn-error.log*
 # local AI context — never commit
 DEVNOTES.md
 CODEGUIDE.md
+START_HERE.md
 
 # vercel
 .vercel
