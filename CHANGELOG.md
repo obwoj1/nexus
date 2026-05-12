@@ -16,3 +16,4 @@
 - feat(landing): hero, waitlist form, dashboard UI preview, features grid, footer CTA
 - feat(auth): login page — Google OAuth + email/password
 - feat(auth): OAuth callback route — code exchange, redirect to dashboard
+- feat(auth): Google OAuth live — Supabase provider configured, redirect URIs set for local + production
