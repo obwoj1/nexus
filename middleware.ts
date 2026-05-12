@@ -1,35 +1,26 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
+const PUBLIC_ROUTES = ["/", "/login", "/auth"];
+
 export async function middleware(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);
 
   const { pathname } = request.nextUrl;
-  const isAuthRoute = pathname.startsWith("/login") || pathname.startsWith("/auth");
+  const isPublicRoute = PUBLIC_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"));
 
-  // Not logged in — redirect to login for protected routes
-  if (!user && !isAuthRoute) {
+  // Not logged in + protected route → landing page
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/";
     return NextResponse.redirect(url);
   }
 
-  // Logged in — enforce single-user lockdown
-  if (user) {
-    const allowedEmail = process.env.ALLOWED_EMAIL;
-    if (!allowedEmail || user.email !== allowedEmail) {
-      // Wrong account — sign out and redirect to login
-      const url = request.nextUrl.clone();
-      url.pathname = "/auth/signout";
-      return NextResponse.redirect(url);
-    }
-
-    // Correct user on an auth route — send to dashboard
-    if (isAuthRoute && pathname !== "/auth/callback") {
-      const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
-      return NextResponse.redirect(url);
-    }
+  // Logged in + on a public/auth route (but not the callback) → dashboard
+  if (user && isPublicRoute && pathname !== "/auth/callback") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
   }
 
   return supabaseResponse;
