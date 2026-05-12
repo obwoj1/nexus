@@ -34,6 +34,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# local AI context — never commit
+DEVNOTES.md
+
 # vercel
 .vercel
 
