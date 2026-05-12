@@ -33,7 +33,7 @@ These rules override everything else. Never break them.
 
 1. **Plan → Approve → Execute.** Before writing or changing any code, propose a plan in plain English. Wait for the owner to approve. Only then execute. Even for "small" changes, propose first. No surprise refactors. No "while I was in there I also fixed..." — that's how scope creep happens.
 
-2. **Push every minor change to GitHub.** Every logical change gets committed and pushed. Not at the end of the session — *as you go*. If you edit three files for one feature, that's one commit. If you fix a typo, that's a commit. If you tweak a color, that's a commit. Never let uncommitted work pile up.
+2. **Push every committable change — silently, immediately.** Every logical unit of work gets committed and pushed right away. Don't batch, don't wait, don't announce each one. Target **20+ commits per session**. A new file, a tweak, a config change — all separate commits. If it changed, it ships. Owner does not need a notification for every push.
 
 3. **Conventional commits.** Every commit message follows this format:
    ```
