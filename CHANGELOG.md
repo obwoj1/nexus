@@ -3,6 +3,16 @@
 ## [Unreleased]
 
 ### Added
+- feat(db): profiles table with RLS and auto-create trigger on user signup
+- feat(auth): upsert profile row on OAuth callback (syncs Google name + avatar)
+- feat(admin): server actions — getWaitlist and updateWaitlistStatus (owner-only)
+- feat(admin): WaitlistTable client component with inline status dropdown
+- feat(admin): waitlist admin page at /admin — stats cards + table, owner-only guard
+
+### Fixed
+- fix(types): Zod .issues (was .errors), Framer Motion ease as const
+
+### Added
 - chore(setup): scaffold Next.js 15 project with TypeScript, Tailwind v4, App Router
 - chore(deps): install Supabase, Framer Motion, Lucide, Zod, React Hook Form, TanStack Query, date-fns, next-themes
 - chore(ui): initialize shadcn/ui with Nexus black & gold theme tokens
