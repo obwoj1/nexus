@@ -8,3 +8,11 @@
 - chore(ui): initialize shadcn/ui with Nexus black & gold theme tokens
 - style(globals): apply full Nexus design token system to globals.css
 - docs: add CLAUDE.md, CHANGELOG.md, README.md
+- feat(supabase): browser client, server client, admin client, middleware session helper
+- feat(middleware): route protection, multi-user auth, public/private route split
+- feat(db): waitlist table with RLS — anon insert only
+- feat(waitlist): server action with Zod validation and duplicate email handling
+- feat(layout): QueryProvider, Geist fonts, dark mode, Nexus metadata
+- feat(landing): hero, waitlist form, dashboard UI preview, features grid, footer CTA
+- feat(auth): login page — Google OAuth + email/password
+- feat(auth): OAuth callback route — code exchange, redirect to dashboard
