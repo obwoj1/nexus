@@ -64,6 +64,8 @@ These rules override everything else. Never break them.
 
 5. **Accessibility is not optional.** Even though this is single-user, the owner deserves a UI that works with keyboards, respects reduced-motion preferences, and uses semantic HTML. shadcn handles a lot of this for free — don't fight it.
 
+6. **Security check on every change.** Before committing any code, mentally audit for: exposed secrets, missing auth checks, SQL injection, XSS, unprotected API routes, service-role key leaking to the client, or missing RLS policies. If a security risk is found, fix it before committing — never ship known vulnerabilities. Flag any security concern to the owner immediately. Security hardening features will be added as a dedicated phase later, but the baseline must always be safe.
+
 ### 🔴 Design rules (the look)
 
 The aesthetic is **Apple Vision Pro glass + subtle gold accents + cinematic motion**. Every UI decision should reinforce this.
