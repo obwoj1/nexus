@@ -3,6 +3,10 @@
 ## [Unreleased]
 
 ### Added
+- chore(deploy): Vercel deployment live at https://nexus-kappa-henna.vercel.app
+- chore(middleware): rename middleware.ts → proxy.ts for Next.js 16 convention
+
+### Added
 - feat(db): profiles table with RLS and auto-create trigger on user signup
 - feat(auth): upsert profile row on OAuth callback (syncs Google name + avatar)
 - feat(admin): server actions — getWaitlist and updateWaitlistStatus (owner-only)
