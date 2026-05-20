@@ -31,8 +31,13 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(async () => {
         setSaveStatus("saving");
-        await saveNoteAction({ id: noteId, title: newTitle, content });
-        setSaveStatus("saved");
+        const result = await saveNoteAction({ id: noteId, title: newTitle, content });
+        if (!result.success) {
+          console.error("[NoteEditor] save failed:", result.error, "content length:", content.length);
+          setSaveStatus("unsaved");
+        } else {
+          setSaveStatus("saved");
+        }
       }, 1000);
     },
     [noteId]

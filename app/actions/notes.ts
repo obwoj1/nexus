@@ -36,20 +36,28 @@ const saveSchema = z.object({
 
 export async function saveNoteAction(
   input: z.infer<typeof saveSchema>
-): Promise<{ success: boolean }> {
+): Promise<{ success: boolean; error?: string }> {
   try {
     const parsed = saveSchema.safeParse(input);
-    if (!parsed.success) return { success: false };
+    if (!parsed.success) {
+      console.error("[saveNoteAction] validation failed:", parsed.error.issues);
+      return { success: false, error: "validation" };
+    }
     const userId = await getUserId();
     const supabase = createAdminClient();
-    await supabase
+    const { error } = await supabase
       .from("notes")
       .update({ title: parsed.data.title, content: parsed.data.content })
       .eq("id", parsed.data.id)
       .eq("user_id", userId);
+    if (error) {
+      console.error("[saveNoteAction] db error:", error.message);
+      return { success: false, error: error.message };
+    }
     return { success: true };
-  } catch {
-    return { success: false };
+  } catch (e) {
+    console.error("[saveNoteAction] unexpected error:", e);
+    return { success: false, error: "unexpected" };
   }
 }
 
