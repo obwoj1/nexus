@@ -18,14 +18,14 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
   const [title, setTitle] = useState(initialTitle);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Keeps current title/content accessible in unmount flush and subscription (avoids stale closures)
   const titleRef = useRef(initialTitle);
   const pendingContentRef = useRef<Block[] | null>(null);
+  // True while replaceBlocks is loading initial content — suppresses auto-save during that window
+  const isLoadingRef = useRef(true);
 
-  // Create editor with no initial content — we load content imperatively below
   const editor = useCreateBlockNote();
 
-  // Load saved content into editor after mount — replaceBlocks is more reliable than initialContent prop
+  // Load saved content imperatively after mount — more reliable than initialContent prop
   useEffect(() => {
     if (initialContent.length > 0) {
       try {
@@ -34,7 +34,9 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
         console.error("[NoteEditor] replaceBlocks failed:", e);
       }
     }
-  // Run once on mount only — editor and initialContent are stable references
+    // Allow saves only after the initial load onChange fires and settles
+    const t = setTimeout(() => { isLoadingRef.current = false; }, 100);
+    return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -58,15 +60,16 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
     [noteId]
   );
 
-  // Subscribe to editor content changes
+  // Subscribe to editor content changes — skip during initial load
   useEffect(() => {
     const unsubscribe = editor.onChange(() => {
+      if (isLoadingRef.current) return;
       scheduleSave(titleRef.current, editor.document as Block[]);
     });
     return unsubscribe;
   }, [editor, scheduleSave]);
 
-  // Flush any pending save on unmount (e.g. navigating away before debounce fires)
+  // Flush pending save on unmount (navigating away before debounce fires)
   const noteIdRef = useRef(noteId);
   useEffect(() => {
     return () => {
@@ -91,7 +94,6 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
 
   return (
     <div className="flex flex-col h-full">
-      {/* Title */}
       <div className="px-12 pt-10 pb-2">
         <input
           type="text"
@@ -103,7 +105,6 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
         />
       </div>
 
-      {/* Save status */}
       <div className="px-12 mb-4">
         <span className="text-xs" style={{
           color: saveStatus === "saved"
@@ -116,7 +117,6 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
         </span>
       </div>
 
-      {/* BlockNote editor */}
       <div className="flex-1 px-8 overflow-y-auto blocknote-nexus">
         <BlockNoteView editor={editor} theme="dark" />
       </div>
