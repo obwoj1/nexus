@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { getInboxMessages, getInboxStats, type GmailMessage } from "@/lib/google/gmail";
+import { getInboxMessages, getInboxStats, getOldUnreadMessages, getOldUnreadCount, type GmailMessage } from "@/lib/google/gmail";
 import { Topbar } from "@/components/layout/Topbar";
+import { QuickReadPanel } from "@/components/mail/QuickReadPanel";
 import { formatDistanceToNow } from "date-fns";
 import { Mail, AlertCircle } from "lucide-react";
 
@@ -81,14 +82,18 @@ export default async function MailPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const [messagesResult, statsResult] = await Promise.allSettled([
+  const [messagesResult, statsResult, oldMessagesResult, oldCountResult] = await Promise.allSettled([
     getInboxMessages(user.id, 25),
     getInboxStats(user.id),
+    getOldUnreadMessages(user.id, 30, 25),
+    getOldUnreadCount(user.id, 30),
   ]);
 
-  const messages = messagesResult.status === "fulfilled" ? messagesResult.value : null;
-  const stats    = statsResult.status    === "fulfilled" ? statsResult.value    : null;
-  const hasError = messagesResult.status === "rejected";
+  const messages    = messagesResult.status    === "fulfilled" ? messagesResult.value    : null;
+  const stats       = statsResult.status       === "fulfilled" ? statsResult.value       : null;
+  const oldMessages = oldMessagesResult.status === "fulfilled" ? oldMessagesResult.value : [];
+  const oldCount    = oldCountResult.status    === "fulfilled" ? oldCountResult.value    : 0;
+  const hasError    = messagesResult.status    === "rejected";
 
   return (
     <div className="flex flex-col flex-1">
@@ -121,6 +126,15 @@ export default async function MailPage() {
               </span>
             )}
           </div>
+        )}
+
+        {/* Quick Read cleanup */}
+        {oldCount > 0 && (
+          <QuickReadPanel
+            initialMessages={oldMessages}
+            oldUnreadCount={oldCount}
+            daysOld={30}
+          />
         )}
 
         {/* Message list */}
