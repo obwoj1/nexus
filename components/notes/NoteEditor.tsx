@@ -18,6 +18,8 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
   const [title, setTitle] = useState(initialTitle);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref keeps title current inside editor.onChange() subscription (avoids stale closure)
+  const titleRef = useRef(initialTitle);
 
   const editor = useCreateBlockNote({
     initialContent: initialContent.length > 0 ? initialContent : undefined,
@@ -36,20 +38,25 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
     [noteId]
   );
 
-  function handleTitleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const val = e.target.value;
-    setTitle(val);
-    onTitleChange(val);
-    scheduleSave(val, editor.document as Block[]);
-  }
-
-  function handleEditorChange() {
-    scheduleSave(title, editor.document as Block[]);
-  }
+  // Subscribe to editor content changes — more reliable than the onChange prop in v0.51.x
+  useEffect(() => {
+    const unsubscribe = editor.onChange(() => {
+      scheduleSave(titleRef.current, editor.document as Block[]);
+    });
+    return unsubscribe;
+  }, [editor, scheduleSave]);
 
   useEffect(() => {
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
   }, []);
+
+  function handleTitleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value;
+    setTitle(val);
+    titleRef.current = val;
+    onTitleChange(val);
+    scheduleSave(val, editor.document as Block[]);
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -80,11 +87,7 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
 
       {/* BlockNote editor */}
       <div className="flex-1 px-8 overflow-y-auto blocknote-nexus">
-        <BlockNoteView
-          editor={editor}
-          onChange={handleEditorChange}
-          theme="dark"
-        />
+        <BlockNoteView editor={editor} theme="dark" />
       </div>
     </div>
   );
