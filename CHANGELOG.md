@@ -2,7 +2,25 @@
 
 ## [Unreleased]
 
-### Added
+### Added — Phase 2 + AI Email (2026-05-20, Session 4)
+- feat(auth): expand Google OAuth scopes to include Calendar + Gmail (access_type offline, prompt consent)
+- feat(db): add google_access_token, google_refresh_token, google_token_expires_at to profiles table
+- feat(auth): save provider_token + provider_refresh_token to profiles on every OAuth login
+- feat(google): token refresh layer — auto-refreshes expired Google access tokens via OAuth2 endpoint
+- feat(calendar): Google Calendar API service — getTodayEvents, getUpcomingEvents
+- feat(gmail): Gmail API service — getInboxMessages, getInboxStats, getOldUnreadMessages, markMessagesAsRead, batchMarkOldAsRead
+- feat(dashboard): dashboard page converted to server component — fetches live calendar + Gmail data
+- feat(dashboard): Calendar and Inbox widgets show real data; link to /calendar and /mail
+- feat(calendar): full calendar page at /calendar — today's agenda + 7-day upcoming view
+- feat(mail): full mail page at /mail — inbox list with unread count, sender, subject, snippet
+- feat(mail): Quick Read panel — shows emails unread 30+ days, individual + bulk mark-as-read
+- feat(ai): Claude email analyzer with prompt caching — flags important emails, generates inbox summary
+- feat(mail): AI Inbox Summary card — scan inbox button, Claude digest, flagged items with priority dots
+- feat(dashboard): Priority Inbox card — full-width AI row, surfaces top 3 important emails on homepage
+- chore(deps): install @anthropic-ai/sdk
+- feat(sidebar): Calendar and Mail nav items enabled (live: true)
+
+### Added — Phase 1 completion + Vercel (2026-05-13, Session 3)
 - chore(deploy): Vercel deployment live at https://nexus-kappa-henna.vercel.app
 - chore(middleware): rename middleware.ts → proxy.ts for Next.js 16 convention
 
