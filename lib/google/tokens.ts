@@ -7,7 +7,7 @@ interface GoogleRefreshResponse {
 }
 
 export async function getValidGoogleToken(userId: string): Promise<string> {
-  const supabase = await createAdminClient();
+  const supabase = createAdminClient();
 
   const { data: profile } = await supabase
     .from("profiles")

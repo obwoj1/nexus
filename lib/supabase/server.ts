@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 // Server-only. Never import this in Client Components.
@@ -29,27 +30,12 @@ export async function createClient() {
   );
 }
 
-// Admin client — uses service role key, bypasses ALL RLS.
-// Only use for server-side privileged operations (e.g. user management).
-export async function createAdminClient() {
-  const cookieStore = await cookies();
-
-  return createServerClient(
+// Admin client — uses service role key via supabase-js directly, bypasses ALL RLS.
+// Only use for server-side privileged operations after verifying auth separately.
+export function createAdminClient() {
+  return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {}
-        },
-      },
-    }
+    { auth: { autoRefreshToken: false, persistSession: false } }
   );
 }

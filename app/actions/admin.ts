@@ -22,7 +22,7 @@ async function assertOwner() {
 
 export async function getWaitlist(): Promise<WaitlistEntry[]> {
   await assertOwner();
-  const admin = await createAdminClient();
+  const admin = createAdminClient();
   const { data, error } = await admin
     .from("waitlist")
     .select("id, name, email, status, created_at")
@@ -33,7 +33,7 @@ export async function getWaitlist(): Promise<WaitlistEntry[]> {
 
 export async function updateWaitlistStatus(id: string, status: WaitlistStatus) {
   await assertOwner();
-  const admin = await createAdminClient();
+  const admin = createAdminClient();
   const { error } = await admin
     .from("waitlist")
     .update({ status })
