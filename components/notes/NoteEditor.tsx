@@ -5,7 +5,7 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
 import { saveNoteAction } from "@/app/actions/notes";
-import type { Block } from "@blocknote/core";
+import type { Block, PartialBlock } from "@blocknote/core";
 
 interface Props {
   noteId: string;
@@ -18,20 +18,25 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
   const [title, setTitle] = useState(initialTitle);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Keeps current title/content accessible in unmount flush (avoids stale closures)
+  // Keeps current title/content accessible in unmount flush and subscription (avoids stale closures)
   const titleRef = useRef(initialTitle);
   const pendingContentRef = useRef<Block[] | null>(null);
 
-  // Log what content this note is mounting with — remove once save is verified
+  // Create editor with no initial content — we load content imperatively below
+  const editor = useCreateBlockNote();
+
+  // Load saved content into editor after mount — replaceBlocks is more reliable than initialContent prop
   useEffect(() => {
-    console.log(`[NoteEditor] mounted note ${noteId}, initialContent blocks:`, initialContent.length, initialContent);
+    if (initialContent.length > 0) {
+      try {
+        editor.replaceBlocks(editor.document, initialContent as PartialBlock[]);
+      } catch (e) {
+        console.error("[NoteEditor] replaceBlocks failed:", e);
+      }
+    }
+  // Run once on mount only — editor and initialContent are stable references
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const editor = useCreateBlockNote({
-    initialContent: initialContent.length > 0 ? (initialContent as any) : undefined,
-  });
 
   const scheduleSave = useCallback(
     (newTitle: string, content: Block[]) => {
@@ -43,7 +48,7 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
         setSaveStatus("saving");
         const result = await saveNoteAction({ id: noteId, title: newTitle, content });
         if (!result.success) {
-          console.error("[NoteEditor] save failed:", result.error, "content length:", content.length);
+          console.error("[NoteEditor] save failed:", result.error);
           setSaveStatus("unsaved");
         } else {
           setSaveStatus("saved");
@@ -53,7 +58,7 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
     [noteId]
   );
 
-  // Subscribe to editor content changes — more reliable than the onChange prop in v0.51.x
+  // Subscribe to editor content changes
   useEffect(() => {
     const unsubscribe = editor.onChange(() => {
       scheduleSave(titleRef.current, editor.document as Block[]);
@@ -61,7 +66,7 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
     return unsubscribe;
   }, [editor, scheduleSave]);
 
-  // Flush any pending save when component unmounts (e.g. page refresh or note switch)
+  // Flush any pending save on unmount (e.g. navigating away before debounce fires)
   const noteIdRef = useRef(noteId);
   useEffect(() => {
     return () => {
@@ -96,13 +101,6 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
           className="w-full text-3xl font-semibold tracking-tight bg-transparent border-none outline-none placeholder:opacity-20"
           style={{ color: "#F5F0E8" }}
         />
-      </div>
-
-      {/* DEBUG — remove after save is verified */}
-      <div className="px-12 mb-1">
-        <span className="text-[10px] font-mono" style={{ color: "rgba(245,240,232,0.3)" }}>
-          [debug] initialContent blocks: {initialContent.length}
-        </span>
       </div>
 
       {/* Save status */}
