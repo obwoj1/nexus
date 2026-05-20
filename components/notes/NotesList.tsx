@@ -16,13 +16,14 @@ export interface NoteItem {
 interface Props {
   notes: NoteItem[];
   activeId: string | null;
+  titleOverride?: Record<string, string>;
   onSelect: (id: string) => void;
   onCreated: (id: string) => void;
   onDeleted: (id: string) => void;
   onTitleUpdate: (id: string, title: string) => void;
 }
 
-export function NotesList({ notes: initial, activeId, onSelect, onCreated, onDeleted, onTitleUpdate }: Props) {
+export function NotesList({ notes: initial, activeId, titleOverride, onSelect, onCreated, onDeleted, onTitleUpdate }: Props) {
   const [notes, setNotes] = useState(initial);
   const [isPending, startTransition] = useTransition();
 
@@ -63,15 +64,6 @@ export function NotesList({ notes: initial, activeId, onSelect, onCreated, onDel
     });
   }
 
-  // Keep titles in sync when editor changes them
-  function updateTitle(id: string, title: string) {
-    setNotes((prev) => prev.map((n) => n.id === id ? { ...n, title } : n));
-    onTitleUpdate(id, title);
-  }
-
-  // Expose updateTitle so parent can call it
-  (NotesList as unknown as { _updateTitle: typeof updateTitle })._updateTitle = updateTitle;
-
   const pinned = notes.filter((n) => n.is_pinned);
   const unpinned = notes.filter((n) => !n.is_pinned);
 
@@ -99,7 +91,7 @@ export function NotesList({ notes: initial, activeId, onSelect, onCreated, onDel
         <div className="flex-1 min-w-0">
           <p className="text-sm truncate"
             style={{ color: isActive ? "#F5F0E8" : "rgba(245,240,232,0.6)", fontWeight: isActive ? 500 : 400 }}>
-            {note.title || "Untitled"}
+            {(titleOverride?.[note.id] ?? note.title) || "Untitled"}
           </p>
           <p className="text-[10px] mt-0.5"
             style={{ color: "rgba(245,240,232,0.25)" }}>
