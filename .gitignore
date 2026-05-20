@@ -45,3 +45,4 @@ START_HERE.md
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+ISSUES.md
