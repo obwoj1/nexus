@@ -47,7 +47,7 @@ export function InboxSummary({ unreadCount }: Props) {
           <div>
             <p className="text-sm font-semibold" style={{ color: "#F5F0E8" }}>AI Inbox Summary</p>
             <p className="text-xs" style={{ color: "rgba(245,240,232,0.4)" }}>
-              {hasResult ? "Powered by Claude" : `Analyze your ${unreadCount} unread emails`}
+              {hasResult ? "Powered by Claudia Ainina" : `Analyze your ${unreadCount} unread emails`}
             </p>
           </div>
         </div>

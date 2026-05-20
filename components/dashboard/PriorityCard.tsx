@@ -49,7 +49,7 @@ export function PriorityCard() {
             <div>
               <p className="text-sm font-semibold" style={{ color: "#F5F0E8" }}>Priority Inbox</p>
               <p className="text-xs" style={{ color: "rgba(245,240,232,0.35)" }}>
-                {hasScanned ? "Powered by Claude" : "AI-powered email triage"}
+                {hasScanned ? "Powered by Claudia Ainina" : "AI-powered email triage"}
               </p>
             </div>
           </div>
@@ -87,7 +87,7 @@ export function PriorityCard() {
               className="flex items-center gap-3 py-2">
               <Mail className="w-4 h-4 shrink-0" style={{ color: "rgba(245,240,232,0.2)" }} />
               <p className="text-sm" style={{ color: "rgba(245,240,232,0.3)" }}>
-                Click &ldquo;Scan now&rdquo; — Claude will read your inbox and surface what actually matters.
+                Click &ldquo;Scan now&rdquo; — Claudia will read your inbox and surface what actually matters.
               </p>
             </motion.div>
           )}
