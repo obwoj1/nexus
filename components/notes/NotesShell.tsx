@@ -1,8 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { NotesList, type NoteItem } from "./NotesList";
-import { NoteEditor } from "./NoteEditor";
+
+const NoteEditor = dynamic(
+  () => import("./NoteEditor").then((m) => m.NoteEditor),
+  { ssr: false, loading: () => (
+    <div className="flex items-center justify-center h-full">
+      <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin"
+        style={{ borderColor: "rgba(200,144,10,0.4)", borderTopColor: "transparent" }} />
+    </div>
+  )}
+);
 import { FileText } from "lucide-react";
 import type { Block } from "@blocknote/core";
 
