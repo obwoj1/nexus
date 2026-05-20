@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getInboxMessages, getInboxStats, getOldUnreadMessages, getOldUnreadCount, type GmailMessage } from "@/lib/google/gmail";
 import { Topbar } from "@/components/layout/Topbar";
 import { QuickReadPanel } from "@/components/mail/QuickReadPanel";
+import { InboxSummary } from "@/components/mail/InboxSummary";
 import { formatDistanceToNow } from "date-fns";
 import { Mail, AlertCircle } from "lucide-react";
 
@@ -127,6 +128,9 @@ export default async function MailPage() {
             )}
           </div>
         )}
+
+        {/* AI Inbox Summary */}
+        <InboxSummary unreadCount={stats?.unread ?? 0} />
 
         {/* Quick Read cleanup */}
         {oldCount > 0 && (
