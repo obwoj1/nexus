@@ -17,8 +17,8 @@ import {
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", live: true },
-  { icon: Calendar,        label: "Calendar",  href: "/calendar",  live: false },
-  { icon: Mail,            label: "Mail",      href: "/mail",      live: false },
+  { icon: Calendar,        label: "Calendar",  href: "/calendar",  live: true },
+  { icon: Mail,            label: "Mail",      href: "/mail",      live: true },
   { icon: FileText,        label: "Notes",     href: "/notes",     live: false },
   { icon: Activity,        label: "Tracking",  href: "/tracking",  live: false },
   { icon: Dumbbell,        label: "Workouts",  href: "/workouts",  live: false },
