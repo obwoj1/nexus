@@ -18,10 +18,11 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
   const [title, setTitle] = useState(initialTitle);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Ref keeps title current inside editor.onChange() subscription (avoids stale closure)
+  // Keeps current title/content accessible in unmount flush (avoids stale closures)
   const titleRef = useRef(initialTitle);
+  const pendingContentRef = useRef<Block[] | null>(null);
 
-  // Log what content this note is mounting with — helps debug load-vs-save issues
+  // Log what content this note is mounting with — remove once save is verified
   useEffect(() => {
     console.log(`[NoteEditor] mounted note ${noteId}, initialContent blocks:`, initialContent.length, initialContent);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -35,8 +36,10 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
   const scheduleSave = useCallback(
     (newTitle: string, content: Block[]) => {
       setSaveStatus("unsaved");
+      pendingContentRef.current = content;
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(async () => {
+        pendingContentRef.current = null;
         setSaveStatus("saving");
         const result = await saveNoteAction({ id: noteId, title: newTitle, content });
         if (!result.success) {
@@ -45,7 +48,7 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
         } else {
           setSaveStatus("saved");
         }
-      }, 1000);
+      }, 500);
     },
     [noteId]
   );
@@ -58,8 +61,19 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
     return unsubscribe;
   }, [editor, scheduleSave]);
 
+  // Flush any pending save when component unmounts (e.g. page refresh or note switch)
+  const noteIdRef = useRef(noteId);
   useEffect(() => {
-    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (pendingContentRef.current !== null) {
+        saveNoteAction({
+          id: noteIdRef.current,
+          title: titleRef.current,
+          content: pendingContentRef.current,
+        });
+      }
+    };
   }, []);
 
   function handleTitleChange(e: React.ChangeEvent<HTMLInputElement>) {
