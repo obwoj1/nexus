@@ -54,6 +54,7 @@ export async function saveNoteAction(
       console.error("[saveNoteAction] db error:", error.message);
       return { success: false, error: error.message };
     }
+    revalidatePath("/notes");
     return { success: true };
   } catch (e) {
     console.error("[saveNoteAction] unexpected error:", e);
