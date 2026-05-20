@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Calendar, Mail, TrendingUp, Flame, StickyNote, Clock, AlertCircle } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { CalendarEvent } from "@/lib/google/calendar";
 import type { InboxStats } from "@/lib/google/gmail";
 
@@ -200,17 +201,19 @@ export function DashboardWidgets({ name, todayEvents, inboxStats }: Props) {
       <GreetingSection name={name} />
 
       {/* Live: Calendar */}
-      <motion.div variants={card} initial="hidden" animate="visible" custom={1}
-        className="rounded-2xl p-5 hover:border-[rgba(200,144,10,0.2)] transition-colors duration-200"
-        style={surface}>
-        <CalendarWidget events={todayEvents} />
+      <motion.div variants={card} initial="hidden" animate="visible" custom={1}>
+        <Link href="/calendar" className="block rounded-2xl p-5 transition-all duration-200 hover:border-[rgba(200,144,10,0.25)] hover:-translate-y-0.5"
+          style={surface}>
+          <CalendarWidget events={todayEvents} />
+        </Link>
       </motion.div>
 
       {/* Live: Inbox */}
-      <motion.div variants={card} initial="hidden" animate="visible" custom={2}
-        className="rounded-2xl p-5 hover:border-[rgba(200,144,10,0.2)] transition-colors duration-200"
-        style={surface}>
-        <InboxWidget stats={inboxStats} />
+      <motion.div variants={card} initial="hidden" animate="visible" custom={2}>
+        <Link href="/mail" className="block rounded-2xl p-5 transition-all duration-200 hover:border-[rgba(200,144,10,0.25)] hover:-translate-y-0.5"
+          style={surface}>
+          <InboxWidget stats={inboxStats} />
+        </Link>
       </motion.div>
 
       {/* Placeholders */}
