@@ -5,6 +5,7 @@ import { Calendar, Mail, TrendingUp, Flame, StickyNote, Clock, AlertCircle } fro
 import { format, parseISO } from "date-fns";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { PriorityCard } from "@/components/dashboard/PriorityCard";
 import type { CalendarEvent } from "@/lib/google/calendar";
 import type { InboxStats } from "@/lib/google/gmail";
 
@@ -215,6 +216,11 @@ export function DashboardWidgets({ name, todayEvents, inboxStats }: Props) {
           <InboxWidget stats={inboxStats} />
         </Link>
       </motion.div>
+
+      {/* AI Priority Inbox — full width */}
+      <div className="col-span-3">
+        <PriorityCard />
+      </div>
 
       {/* Placeholders */}
       {staticCards.map((c, i) => (
