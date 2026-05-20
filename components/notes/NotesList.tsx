@@ -29,16 +29,18 @@ export function NotesList({ notes: initial, activeId, onSelect, onCreated, onDel
   function handleCreate() {
     startTransition(async () => {
       const res = await createNoteAction();
-      if ("id" in res) {
-        const newNote: NoteItem = {
-          id: res.id,
-          title: "Untitled",
-          is_pinned: false,
-          updated_at: new Date().toISOString(),
-        };
-        setNotes((prev) => [newNote, ...prev]);
-        onCreated(res.id);
+      if ("error" in res) {
+        console.error("Failed to create note:", res.error);
+        return;
       }
+      const newNote: NoteItem = {
+        id: res.id,
+        title: "Untitled",
+        is_pinned: false,
+        updated_at: new Date().toISOString(),
+      };
+      setNotes((prev) => [newNote, ...prev]);
+      onCreated(res.id);
     });
   }
 
