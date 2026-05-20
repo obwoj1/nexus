@@ -98,6 +98,13 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
         />
       </div>
 
+      {/* DEBUG — remove after save is verified */}
+      <div className="px-12 mb-1">
+        <span className="text-[10px] font-mono" style={{ color: "rgba(245,240,232,0.3)" }}>
+          [debug] initialContent blocks: {initialContent.length}
+        </span>
+      </div>
+
       {/* Save status */}
       <div className="px-12 mb-4">
         <span className="text-xs" style={{
