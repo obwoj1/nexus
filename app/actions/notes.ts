@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -14,7 +14,7 @@ async function getUserId(): Promise<string> {
 export async function createNoteAction(): Promise<{ id: string } | { error: string }> {
   try {
     const userId = await getUserId();
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const { data, error } = await supabase
       .from("notes")
       .insert({ user_id: userId, title: "Untitled", content: [] })
@@ -41,7 +41,7 @@ export async function saveNoteAction(
     const parsed = saveSchema.safeParse(input);
     if (!parsed.success) return { success: false };
     const userId = await getUserId();
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     await supabase
       .from("notes")
       .update({ title: parsed.data.title, content: parsed.data.content })
@@ -56,7 +56,7 @@ export async function saveNoteAction(
 export async function deleteNoteAction(id: string): Promise<{ success: boolean }> {
   try {
     const userId = await getUserId();
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     await supabase.from("notes").delete().eq("id", id).eq("user_id", userId);
     revalidatePath("/notes");
     return { success: true };
@@ -68,7 +68,7 @@ export async function deleteNoteAction(id: string): Promise<{ success: boolean }
 export async function togglePinAction(id: string, pinned: boolean): Promise<{ success: boolean }> {
   try {
     const userId = await getUserId();
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     await supabase
       .from("notes")
       .update({ is_pinned: pinned })
