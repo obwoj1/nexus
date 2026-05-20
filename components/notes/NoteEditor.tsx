@@ -21,8 +21,15 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
   // Ref keeps title current inside editor.onChange() subscription (avoids stale closure)
   const titleRef = useRef(initialTitle);
 
+  // Log what content this note is mounting with — helps debug load-vs-save issues
+  useEffect(() => {
+    console.log(`[NoteEditor] mounted note ${noteId}, initialContent blocks:`, initialContent.length, initialContent);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editor = useCreateBlockNote({
-    initialContent: initialContent.length > 0 ? initialContent : undefined,
+    initialContent: initialContent.length > 0 ? (initialContent as any) : undefined,
   });
 
   const scheduleSave = useCallback(
