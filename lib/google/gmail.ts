@@ -117,7 +117,7 @@ export async function getOldUnreadMessages(userId: string, daysOld = 30, limit =
         from: get("From"),
         snippet: detail.snippet ?? "",
         date: get("Date"),
-        isUnread: true,
+        isUnread: true as boolean,
       } satisfies GmailMessage;
     })
   );
