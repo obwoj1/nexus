@@ -63,6 +63,7 @@ export function NotesShell({ initialNotes, noteContents }: Props) {
         <NotesList
           notes={initialNotes}
           activeId={activeId}
+          titleOverride={titleMap}
           onSelect={setActiveId}
           onCreated={handleCreated}
           onDeleted={handleDeleted}
