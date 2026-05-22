@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Added — Phase 5: Workouts (2026-05-21, Session 11 — partial)
+- chore(db): 5 new tables — exercises (global seed), workout_templates, template_exercises, workout_sessions, session_sets — all with RLS
+- chore(db): 36 exercises seeded across 7 muscle groups (Chest/Back/Legs/Shoulders/Arms/Core/Cardio)
+- feat(workouts): /workouts page — parallel server fetch for exercises, today's session, recent history, templates
+- feat(workouts): WorkoutsShell — 4-section left nav (Log / History / Templates / Progress)
+- feat(workouts): LogSection — start workout (blank or from template), exercise picker grouped by muscle, inline set logging (reps + lbs), delete sets/exercises, rename session
+- feat(workouts): HistorySection — last 20 sessions, expandable to show all exercises + set chips with volume total
+- feat(workouts): server actions — createSession, updateSession, deleteSession, addSet, updateSet, deleteSet, createTemplate, deleteTemplate, removeExerciseFromTemplate, getExerciseProgress
+- **TODO next session:** TemplatesSection, ProgressSection, enable Workouts sidebar nav item
+
 ### Added — Phase 4: Charts (2026-05-21, Session 10)
 - feat(tracking): HabitsSection — 30-day completion bar chart, each bar colored to habit's color
 - feat(tracking): SubscriptionsSection — spending-by-category donut chart with legend

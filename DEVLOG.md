@@ -201,6 +201,30 @@ Claudia does NOT have a direct database connection. The server action (`askClaud
 **Architecture note:**
 Full conversation history is passed to Claude every turn (as `messages` array). This means Claudia remembers earlier parts of the chat within the session and can answer follow-up questions referencing previous context. History is held in React state only — not persisted to DB, so it resets on panel close.
 
+---
+
+## Session 11 — Phase 5: Workouts (2026-05-21, partial)
+
+**Goal:** Full workout tracker — log sessions, browse history, manage templates, track progression.
+
+**Done this session:**
+- DB migration (`20260521_010_workouts.sql`): exercises (global, unique name), workout_templates, template_exercises, workout_sessions, session_sets — all with RLS. 36 exercises seeded across 7 muscle groups.
+- `app/actions/workouts.ts`: full CRUD for sessions + sets + templates. Progress action fetches all user sessions, cross-references session_sets by exerciseId, groups by date to compute maxWeight and totalVolume per session.
+- `app/(app)/workouts/page.tsx`: server page, Promise.all for exercises + today's session (maybeSingle) + recent 20 sessions + templates.
+- `WorkoutsShell.tsx`: same left-nav pattern as TrackingShell, 4 items.
+- `LogSection.tsx`: most complex component. State: `SessionState` (sets flat array) + `pendingExercises` (added to UI but no sets yet). Exercise picker dropdown grouped by muscle, searchable. Each exercise shows set rows + input row (reps + lbs + Log button). Enter key submits. Optimistic updates — set appears immediately, server action fires in background.
+- `HistorySection.tsx`: expandable session cards. Derives exercise groups client-side from flat `session_sets` array. Shows total volume, unique exercise count.
+
+**Stopped mid-session — still needed:**
+- `TemplatesSection.tsx` — create/manage saved workout plans
+- `ProgressSection.tsx` — exercise selector + max weight + volume line charts (recharts)
+- Enable Workouts in `Sidebar.tsx` (`live: true`)
+
+**Architecture notes:**
+- Sets are the source of truth. An exercise "exists" in a session only if it has ≥1 set OR is in `pendingExercises` state. No exercise-level records needed.
+- Ownership checks for set delete/update use a 2-query pattern (get session_id from set, then verify user_id on session) — safer than nested join filter with admin client.
+- Progress query: get all user session IDs first, then filter session_sets by exerciseId + those IDs, then group client-side by date. Clean and reliable.
+
 ## What's next (Phase 4 target)
 
 - General tracking: habits (daily checkmarks, streaks), subscriptions (amount + billing cycle), goals (milestones + progress)
