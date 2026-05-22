@@ -17,25 +17,27 @@ interface Props {
 export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange }: Props) {
   const [title, setTitle] = useState(initialTitle);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
+  const [debugBlocks, setDebugBlocks] = useState(initialContent.length);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleRef = useRef(initialTitle);
   const pendingContentRef = useRef<Block[] | null>(null);
-  // True while replaceBlocks is loading initial content — suppresses auto-save during that window
   const isLoadingRef = useRef(true);
 
   const editor = useCreateBlockNote();
 
-  // Load saved content imperatively after mount — more reliable than initialContent prop
+  // Load saved content after mount — setTimeout(0) ensures ProseMirror view is ready
   useEffect(() => {
-    if (initialContent.length > 0) {
-      try {
-        editor.replaceBlocks(editor.document, initialContent as PartialBlock[]);
-      } catch (e) {
-        console.error("[NoteEditor] replaceBlocks failed:", e);
+    setDebugBlocks(initialContent.length);
+    const t = setTimeout(() => {
+      if (initialContent.length > 0) {
+        try {
+          editor.replaceBlocks(editor.document, initialContent as PartialBlock[]);
+        } catch (e) {
+          console.error("[NoteEditor] replaceBlocks failed:", e);
+        }
       }
-    }
-    // Allow saves only after the initial load onChange fires and settles
-    const t = setTimeout(() => { isLoadingRef.current = false; }, 100);
+      isLoadingRef.current = false;
+    }, 0);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -60,7 +62,6 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
     [noteId]
   );
 
-  // Subscribe to editor content changes — skip during initial load
   useEffect(() => {
     const unsubscribe = editor.onChange(() => {
       if (isLoadingRef.current) return;
@@ -69,7 +70,6 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
     return unsubscribe;
   }, [editor, scheduleSave]);
 
-  // Flush pending save on unmount (navigating away before debounce fires)
   const noteIdRef = useRef(noteId);
   useEffect(() => {
     return () => {
@@ -103,6 +103,12 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
           className="w-full text-3xl font-semibold tracking-tight bg-transparent border-none outline-none placeholder:opacity-20"
           style={{ color: "#F5F0E8" }}
         />
+      </div>
+
+      <div className="px-12 mb-1">
+        <span className="text-[10px] font-mono" style={{ color: "rgba(245,240,232,0.25)" }}>
+          blocks from db: {debugBlocks}
+        </span>
       </div>
 
       <div className="px-12 mb-4">
