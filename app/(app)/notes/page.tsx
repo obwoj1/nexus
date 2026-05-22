@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { Topbar } from "@/components/layout/Topbar";
 import { NotesShell } from "@/components/notes/NotesShell";
 import type { Block } from "@blocknote/core";
@@ -9,7 +9,8 @@ export default async function NotesPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: notes } = await supabase
+  const admin = createAdminClient();
+  const { data: notes } = await admin
     .from("notes")
     .select("id, title, is_pinned, updated_at, content")
     .eq("user_id", user.id)
