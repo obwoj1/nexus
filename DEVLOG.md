@@ -170,7 +170,23 @@ Switching from "load all content upfront" to "lazy-load per note" means the init
 
 ---
 
-## Session 10 — Phase 4: Claudia AI integration (2026-05-21)
+## Session 10 — Phase 4: Charts + Claudia AI (2026-05-21)
+
+**Goal:** Visual analytics per tracking section + Claudia AI integration.
+
+**Charts done:**
+- HabitsSection: Bar chart, 30-day completion rate per habit — uses reactive `logs` state (Set of `habit_id|date`) so updates live as user toggles
+- SubscriptionsSection: Donut (innerRadius 55, outerRadius 80) split by category, computed from `subs` state with same monthly normalization logic
+- GoalsSection: Horizontal bar chart (layout="vertical"), gold for active goals, green for completed, dynamic height based on goal count
+- HealthSection: Dual-line chart, sleep on left Y axis (0-12h), mood on right Y axis (0-5), only shown when ≥2 data points exist
+- ReadingSection: 2-column grid — status donut + star ratings bar chart (only shown when rated books exist), both conditional on data presence
+
+**Architecture note:**
+All chart data is derived inline from existing component state — no new props, no new fetches. Charts are reactive because they read from the same state as the interactive UI. IIFE pattern in ReadingSection keeps the conditional rendering clean without polluting the component scope with chart-only variables.
+
+---
+
+## Session 10 (continued) — Phase 4: Claudia AI integration (2026-05-21)
 
 **Goal:** Give Claudia live access to all tracking data and build an interactive chat panel.
 

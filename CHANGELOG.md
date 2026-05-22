@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added — Phase 4: Charts (2026-05-21, Session 10)
+- feat(tracking): HabitsSection — 30-day completion bar chart, each bar colored to habit's color
+- feat(tracking): SubscriptionsSection — spending-by-category donut chart with legend
+- feat(tracking): GoalsSection — horizontal progress bar chart (gold = active, green = done)
+- feat(tracking): HealthSection — dual-line trend chart: sleep (h) on left axis, mood /5 on right axis
+- feat(tracking): ReadingSection — library split donut (to-read/reading/done) + ratings distribution bar chart
+
 ### Added — Phase 4: Claudia AI (2026-05-21, Session 10)
 - feat(tracking): Claudia AI integration — `askClaudiaTrackingAction` fetches all 7 tracking tables, formats context, calls claude-sonnet-4-6 with full conversation history
 - feat(tracking): ClaudiaPanel — 360px sliding right panel with spring animation, bouncing dots indicator, auto-greeting on first open
