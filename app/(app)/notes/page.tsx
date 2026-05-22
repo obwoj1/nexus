@@ -12,13 +12,11 @@ export default async function NotesPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  // Read user's timezone preference from cookie
   const cookieStore = await cookies();
   const timezone = cookieStore.get("nexus-tz")?.value ?? DEFAULT_TZ;
 
   const admin = createAdminClient();
 
-  // Daily journal title in user's timezone, e.g. "Wednesday, May 21, 2026"
   const journalTitle = new Date().toLocaleDateString("en-US", {
     timeZone: timezone,
     weekday: "long",
@@ -43,10 +41,10 @@ export default async function NotesPage() {
     });
   }
 
-  // Fetch all notes — no is_journal column (identified by title pattern client-side)
+  // Fetch metadata only — no content blob to keep initial payload small
   const { data: notes } = await admin
     .from("notes")
-    .select("id, title, is_pinned, updated_at, content")
+    .select("id, title, is_pinned, updated_at")
     .eq("user_id", user.id)
     .order("is_pinned", { ascending: false })
     .order("updated_at", { ascending: false });
@@ -58,18 +56,29 @@ export default async function NotesPage() {
     updated_at: n.updated_at,
   }));
 
-  const contentMap: Record<string, Block[]> = Object.fromEntries(
-    (notes ?? []).map((n) => [n.id, (n.content as Block[]) ?? []])
-  );
-
   const journalId = (notes ?? []).find((n) => n.title === journalTitle)?.id ?? null;
+
+  // Pre-fetch today's journal content so it opens instantly
+  let journalContent: Block[] = [];
+  if (journalId) {
+    const { data: jData } = await admin
+      .from("notes")
+      .select("content")
+      .eq("id", journalId)
+      .single();
+    journalContent = (jData?.content as Block[]) ?? [];
+  }
+
+  const initialContents: Record<string, Block[]> = journalId
+    ? { [journalId]: journalContent }
+    : {};
 
   return (
     <div className="flex flex-col flex-1 h-screen overflow-hidden">
       <Topbar section="NOTES" title="Notes" />
       <NotesShell
         initialNotes={noteList}
-        noteContents={contentMap}
+        initialContents={initialContents}
         journalId={journalId}
         timezone={timezone}
       />

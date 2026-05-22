@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import type { Block } from "@blocknote/core";
 
 async function getUserId(): Promise<string> {
   const supabase = await createClient();
@@ -87,5 +88,21 @@ export async function togglePinAction(id: string, pinned: boolean): Promise<{ su
     return { success: true };
   } catch {
     return { success: false };
+  }
+}
+
+export async function getNoteContentAction(id: string): Promise<Block[]> {
+  try {
+    const userId = await getUserId();
+    const supabase = createAdminClient();
+    const { data } = await supabase
+      .from("notes")
+      .select("content")
+      .eq("id", id)
+      .eq("user_id", userId)
+      .single();
+    return (data?.content as Block[]) ?? [];
+  } catch {
+    return [];
   }
 }

@@ -113,8 +113,15 @@ export function NotesList({
     router.refresh(); // re-runs the server page → creates today's journal in new timezone
   }
 
-  // Only show today's journal entry — past entries exist in DB but aren't surfaced here
+  const [recentOpen, setRecentOpen] = useState(false);
+
+  // Today's entry
   const journalNotes = notes.filter((n) => n.id === todayJournalId);
+  // Past journal entries — last 7, excluding today
+  const recentJournalNotes = notes
+    .filter((n) => isJournalNote(titleOverride?.[n.id] ?? n.title) && n.id !== todayJournalId)
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    .slice(0, 7);
 
   const q = search.toLowerCase();
   // Regular notes = everything except journal entries (identified by title pattern)
@@ -282,16 +289,51 @@ export function NotesList({
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className="px-2 pb-1 pt-1"
-                style={{ borderBottom: "1px solid rgba(255,235,180,0.07)" }}>
+              <div className="px-2 pb-1 pt-1">
                 {journalNotes.length === 0 ? (
                   <p className="text-[10px] text-center py-3" style={{ color: "rgba(245,240,232,0.2)" }}>
-                    No entries yet
+                    No entry yet
                   </p>
                 ) : (
                   journalNotes.map((n) => <NoteRow key={n.id} note={n} isJournal />)
                 )}
+
+                {/* Recent past entries */}
+                {recentJournalNotes.length > 0 && (
+                  <div className="mt-1">
+                    <button
+                      onClick={() => setRecentOpen((v) => !v)}
+                      className="w-full flex items-center gap-1.5 px-3 py-1.5 text-left transition-colors hover:bg-white/[0.02] rounded-lg"
+                    >
+                      <ChevronDown
+                        className="w-2.5 h-2.5 transition-transform duration-150"
+                        style={{
+                          color: "rgba(245,240,232,0.2)",
+                          transform: recentOpen ? "rotate(0deg)" : "rotate(-90deg)",
+                        }}
+                      />
+                      <span className="text-[9px] tracking-widest uppercase"
+                        style={{ color: "rgba(245,240,232,0.2)" }}>
+                        Recent · {recentJournalNotes.length}
+                      </span>
+                    </button>
+                    <AnimatePresence initial={false}>
+                      {recentOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.15 }}
+                          className="overflow-hidden"
+                        >
+                          {recentJournalNotes.map((n) => <NoteRow key={n.id} note={n} isJournal />)}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
               </div>
+              <div className="h-px mx-2" style={{ background: "rgba(255,235,180,0.07)" }} />
             </motion.div>
           )}
         </AnimatePresence>

@@ -3,12 +3,13 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { NotesList, type NoteItem } from "./NotesList";
+import { getNoteContentAction } from "@/app/actions/notes";
 
 const NoteEditor = dynamic(
   () => import("./NoteEditor").then((m) => m.NoteEditor),
   { ssr: false, loading: () => (
     <div className="flex items-center justify-center h-full">
-      <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin"
+      <div className="w-5 h-5 rounded-full border-2 animate-spin"
         style={{ borderColor: "rgba(200,144,10,0.4)", borderTopColor: "transparent" }} />
     </div>
   )}
@@ -18,27 +19,46 @@ import type { Block } from "@blocknote/core";
 
 interface Props {
   initialNotes: NoteItem[];
-  noteContents: Record<string, Block[]>;
+  initialContents: Record<string, Block[]>;
   journalId: string | null;
   timezone: string;
 }
 
-export function NotesShell({ initialNotes, noteContents, journalId, timezone }: Props) {
+export function NotesShell({ initialNotes, initialContents, journalId, timezone }: Props) {
   const [activeId, setActiveId] = useState<string | null>(
     journalId ?? initialNotes[0]?.id ?? null
   );
   const [titleMap, setTitleMap] = useState<Record<string, string>>(
     Object.fromEntries(initialNotes.map((n) => [n.id, n.title]))
   );
-  const [contentMap] = useState<Record<string, Block[]>>(noteContents);
+  // contentMap: key present = loaded (value may be []); key absent = not yet fetched
+  const [contentMap, setContentMap] = useState<Record<string, Block[]>>(initialContents);
+  const [contentLoading, setContentLoading] = useState(false);
+
+  async function handleSelect(id: string) {
+    if (id === activeId && contentMap[id] !== undefined) return;
+    setActiveId(id);
+    if (contentMap[id] === undefined) {
+      setContentLoading(true);
+      const content = await getNoteContentAction(id);
+      setContentMap((prev) => ({ ...prev, [id]: content }));
+      setContentLoading(false);
+    }
+  }
 
   function handleCreated(id: string) {
     setTitleMap((prev) => ({ ...prev, [id]: "Untitled" }));
+    setContentMap((prev) => ({ ...prev, [id]: [] })); // new note = empty, no fetch needed
     setActiveId(id);
   }
 
   function handleDeleted(id: string) {
     setTitleMap((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setContentMap((prev) => {
       const next = { ...prev };
       delete next[id];
       return next;
@@ -51,8 +71,10 @@ export function NotesShell({ initialNotes, noteContents, journalId, timezone }: 
     setTitleMap((prev) => ({ ...prev, [activeId]: title }));
   }
 
-  const activeContent = activeId ? (contentMap[activeId] ?? []) : [];
+  const activeContent = activeId !== null ? (contentMap[activeId] ?? null) : null;
   const activeTitle = activeId ? (titleMap[activeId] ?? "Untitled") : "Untitled";
+  // Only render editor once content is ready (null = still loading)
+  const editorReady = activeId !== null && activeContent !== null && !contentLoading;
 
   return (
     <div className="flex flex-1 h-full overflow-hidden">
@@ -64,19 +86,24 @@ export function NotesShell({ initialNotes, noteContents, journalId, timezone }: 
           titleOverride={titleMap}
           todayJournalId={journalId}
           timezone={timezone}
-          onSelect={setActiveId}
+          onSelect={handleSelect}
           onCreated={handleCreated}
           onDeleted={handleDeleted}
           onTitleUpdate={(id, title) => setTitleMap((prev) => ({ ...prev, [id]: title }))}
         />
       </div>
 
-      {/* Editor */}
+      {/* Editor area */}
       <div className="flex-1 overflow-hidden">
-        {activeId ? (
+        {contentLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="w-5 h-5 rounded-full border-2 animate-spin"
+              style={{ borderColor: "rgba(200,144,10,0.4)", borderTopColor: "transparent" }} />
+          </div>
+        ) : editorReady ? (
           <NoteEditor
             key={activeId}
-            noteId={activeId}
+            noteId={activeId!}
             initialTitle={activeTitle}
             initialContent={activeContent}
             onTitleChange={handleTitleChange}
