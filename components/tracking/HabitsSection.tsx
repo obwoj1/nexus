@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Plus, Trash2, Flame } from "lucide-react";
 import { createHabitAction, deleteHabitAction, toggleHabitLogAction } from "@/app/actions/tracking";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 interface Habit { id: string; name: string; color: string; }
 interface HabitLog { habit_id: string; date: string; }
@@ -40,6 +41,15 @@ export function HabitsSection({ today, habits: initial, habitLogs }: {
   );
 
   const days = getLast7Days(today);
+
+  const thirtyAgoStr = (() => {
+    const d = new Date(today); d.setDate(d.getDate() - 30);
+    return d.toISOString().split("T")[0];
+  })();
+  const habitChartData = habits.map((h) => {
+    const count = [...logs].filter((k) => k.startsWith(h.id + "|") && k.split("|")[1] >= thirtyAgoStr).length;
+    return { name: h.name.length > 11 ? h.name.slice(0, 11) + "…" : h.name, rate: Math.round((count / 30) * 100), color: h.color };
+  });
 
   function isLogged(habitId: string, date: string) {
     return logs.has(`${habitId}|${date}`);
@@ -199,6 +209,31 @@ export function HabitsSection({ today, habits: initial, habitLogs }: {
           );
         })}
       </div>
+
+      {/* Chart */}
+      {habits.length > 0 && (
+        <div className="mt-10">
+          <p className="text-[10px] uppercase tracking-widest mb-4" style={{ color: "rgba(245,240,232,0.25)" }}>30-day completion</p>
+          <div className="p-5 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,235,180,0.06)" }}>
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={habitChartData} margin={{ top: 4, right: 4, bottom: 0, left: -18 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,235,180,0.06)" vertical={false} />
+                <XAxis dataKey="name" tick={{ fill: "rgba(245,240,232,0.4)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, 100]} tick={{ fill: "rgba(245,240,232,0.4)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
+                <Tooltip
+                  contentStyle={{ background: "#0D0C0A", border: "1px solid rgba(200,144,10,0.25)", borderRadius: 8, padding: "6px 10px" }}
+                  labelStyle={{ color: "rgba(245,240,232,0.5)", fontSize: 10 }}
+                  formatter={(v) => [`${v}%`, "Completion"]}
+                  cursor={{ fill: "rgba(255,255,255,0.03)" }}
+                />
+                <Bar dataKey="rate" radius={[3, 3, 0, 0]} maxBarSize={36}>
+                  {habitChartData.map((entry, i) => <Cell key={i} fill={entry.color} fillOpacity={0.8} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
