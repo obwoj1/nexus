@@ -3,6 +3,9 @@
 import { useState, useTransition } from "react";
 import { Plus, Trash2, CreditCard } from "lucide-react";
 import { createSubscriptionAction, deleteSubscriptionAction } from "@/app/actions/tracking";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
+
+const PIE_COLORS = ["#C8900A", "#4ADE80", "#60A5FA", "#F87171", "#A78BFA", "#FB923C", "#34D399", "#F472B6"];
 
 interface Subscription {
   id: string; name: string; amount: number; billing_cycle: string;
@@ -28,6 +31,15 @@ export function SubscriptionsSection({ subscriptions: initial }: { subscriptions
 
   const monthlyTotal = subs.reduce((sum, s) => sum + toMonthly(Number(s.amount), s.billing_cycle), 0);
   const annualTotal = monthlyTotal * 12;
+
+  const categoryMap: Record<string, number> = {};
+  subs.forEach((s) => {
+    const cat = s.category ?? "Other";
+    categoryMap[cat] = (categoryMap[cat] ?? 0) + toMonthly(Number(s.amount), s.billing_cycle);
+  });
+  const categoryData = Object.entries(categoryMap)
+    .map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) }))
+    .sort((a, b) => b.value - a.value);
 
   function handleCreate() {
     if (!form.name || !form.amount) return;
@@ -162,6 +174,32 @@ export function SubscriptionsSection({ subscriptions: initial }: { subscriptions
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Chart */}
+      {subs.length > 0 && categoryData.length > 0 && (
+        <div className="mt-10">
+          <p className="text-[10px] uppercase tracking-widest mb-4" style={{ color: "rgba(245,240,232,0.25)" }}>Spending by category</p>
+          <div className="p-5 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,235,180,0.06)" }}>
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie data={categoryData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} dataKey="value" paddingAngle={3}>
+                  {categoryData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ background: "#0D0C0A", border: "1px solid rgba(200,144,10,0.25)", borderRadius: 8, padding: "6px 10px" }}
+                  formatter={(v) => [`$${(v as number).toFixed(2)}/mo`, ""]}
+                  labelStyle={{ color: "#F5F0E8", fontSize: 11 }}
+                />
+                <Legend
+                  iconType="circle"
+                  iconSize={7}
+                  formatter={(value) => <span style={{ color: "rgba(245,240,232,0.55)", fontSize: 10 }}>{value}</span>}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
     </div>
