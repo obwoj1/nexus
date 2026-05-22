@@ -113,11 +113,11 @@ export function NotesList({
     router.refresh(); // re-runs the server page → creates today's journal in new timezone
   }
 
-  const journalNotes = notes
-    .filter((n) => isJournalNote(titleOverride?.[n.id] ?? n.title))
-    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  // Only show today's journal entry — past entries exist in DB but aren't surfaced here
+  const journalNotes = notes.filter((n) => n.id === todayJournalId);
 
   const q = search.toLowerCase();
+  // Regular notes = everything except journal entries (identified by title pattern)
   const regularNotes = notes
     .filter((n) => !isJournalNote(titleOverride?.[n.id] ?? n.title))
     .filter((n) => (titleOverride?.[n.id] ?? n.title).toLowerCase().includes(q));

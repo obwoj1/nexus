@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+### Added — Phase 3: Notes (2026-05-21, Sessions 5–8)
+- feat(db): notes table with RLS — id, user_id, title, content (jsonb), is_pinned, is_journal, created_at, updated_at
+- feat(notes): full Notion-style block editor via BlockNote v0.51.1, dark/gold Nexus theme
+- feat(notes): notes sidebar with pin, delete, real-time title sync via titleOverride prop
+- feat(notes): note content persistence — editor.onChange() subscription, replaceBlocks on mount, isLoadingRef gate
+- feat(notes): auto-save with 500ms debounce, router.refresh() after save to bust Next.js Router Cache
+- feat(notes): createAdminClient() for all DB queries — bypasses RLS cookie propagation issues on hard refresh
+- feat(notes): note search — live filter in sidebar by title
+- feat(notes): daily journal — auto-creates today's entry on page load using user's timezone (EST default)
+- feat(notes): journal section — separate JOURNAL sidebar section with BookOpen icon, collapsible, Today button
+- feat(notes): timezone preference — stored in nexus-tz cookie, timezone picker (globe icon) in journal header
+- feat(notes): journal title format — full date e.g. "Wednesday, May 21, 2026" using user's timezone
+- feat(notes): AI writing assist ("Ask Claudia") — select text → Rewrite / Expand / Summarize / Fix grammar
+- feat(notes): AI assist uses claude-sonnet-4-6 via Anthropic SDK, selection snapshot stored in ref to survive editor blur
+- style(notes): BlockNote editor themed to Nexus dark/gold — transparent background, gold menus/borders, cream text
+- fix(notes): isLoadingRef gate prevents spurious saves during React Strict Mode double-mount
+- fix(notes): titleRef keeps current title accessible inside debounced onChange closure
+- fix(notes): onMouseDown preventDefault on AI assist buttons preserves ProseMirror selection
+- fix(notes): selection snapshot (from + to + text) stored in ref so AI assist works after editor blur
+- chore(db): is_journal boolean column added to notes table
+
 ### Added — Phase 2 + AI Email (2026-05-20, Session 4)
 - feat(auth): expand Google OAuth scopes to include Calendar + Gmail (access_type offline, prompt consent)
 - feat(db): add google_access_token, google_refresh_token, google_token_expires_at to profiles table
