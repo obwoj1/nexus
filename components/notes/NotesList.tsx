@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Pin, Trash2, FileText, Loader2 } from "lucide-react";
+import { Plus, Pin, Trash2, FileText, Loader2, Search } from "lucide-react";
 import { createNoteAction, deleteNoteAction, togglePinAction } from "@/app/actions/notes";
 import { formatDistanceToNow } from "date-fns";
 
@@ -26,20 +26,13 @@ interface Props {
 export function NotesList({ notes: initial, activeId, titleOverride, onSelect, onCreated, onDeleted, onTitleUpdate }: Props) {
   const [notes, setNotes] = useState(initial);
   const [isPending, startTransition] = useTransition();
+  const [search, setSearch] = useState("");
 
   function handleCreate() {
     startTransition(async () => {
       const res = await createNoteAction();
-      if ("error" in res) {
-        console.error("Failed to create note:", res.error);
-        return;
-      }
-      const newNote: NoteItem = {
-        id: res.id,
-        title: "Untitled",
-        is_pinned: false,
-        updated_at: new Date().toISOString(),
-      };
+      if ("error" in res) { console.error("Failed to create note:", res.error); return; }
+      const newNote: NoteItem = { id: res.id, title: "Untitled", is_pinned: false, updated_at: new Date().toISOString() };
       setNotes((prev) => [newNote, ...prev]);
       onCreated(res.id);
     });
@@ -58,17 +51,18 @@ export function NotesList({ notes: initial, activeId, titleOverride, onSelect, o
     e.stopPropagation();
     startTransition(async () => {
       await togglePinAction(id, !pinned);
-      setNotes((prev) =>
-        prev.map((n) => n.id === id ? { ...n, is_pinned: !pinned } : n)
-      );
+      setNotes((prev) => prev.map((n) => n.id === id ? { ...n, is_pinned: !pinned } : n));
     });
   }
 
-  const pinned = notes.filter((n) => n.is_pinned);
-  const unpinned = notes.filter((n) => !n.is_pinned);
+  const q = search.toLowerCase();
+  const filtered = notes.filter((n) => (titleOverride?.[n.id] ?? n.title).toLowerCase().includes(q));
+  const pinned = filtered.filter((n) => n.is_pinned);
+  const unpinned = filtered.filter((n) => !n.is_pinned);
 
   function NoteRow({ note }: { note: NoteItem }) {
     const isActive = note.id === activeId;
+    const displayTitle = (titleOverride?.[note.id] ?? note.title) || "Untitled";
     return (
       <motion.div
         layout
@@ -76,7 +70,7 @@ export function NotesList({ notes: initial, activeId, titleOverride, onSelect, o
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -8 }}
         onClick={() => onSelect(note.id)}
-        className="group flex items-start gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-colors duration-150"
+        className="relative group flex items-start gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-colors duration-150"
         style={{
           background: isActive ? "rgba(200,144,10,0.1)" : "transparent",
           border: isActive ? "1px solid rgba(200,144,10,0.2)" : "1px solid transparent",
@@ -91,10 +85,9 @@ export function NotesList({ notes: initial, activeId, titleOverride, onSelect, o
         <div className="flex-1 min-w-0">
           <p className="text-sm truncate"
             style={{ color: isActive ? "#F5F0E8" : "rgba(245,240,232,0.6)", fontWeight: isActive ? 500 : 400 }}>
-            {(titleOverride?.[note.id] ?? note.title) || "Untitled"}
+            {displayTitle}
           </p>
-          <p className="text-[10px] mt-0.5"
-            style={{ color: "rgba(245,240,232,0.25)" }}>
+          <p className="text-[10px] mt-0.5" style={{ color: "rgba(245,240,232,0.25)" }}>
             {formatDistanceToNow(new Date(note.updated_at), { addSuffix: true })}
           </p>
         </div>
@@ -102,8 +95,7 @@ export function NotesList({ notes: initial, activeId, titleOverride, onSelect, o
           <button onClick={(e) => handlePin(note.id, note.is_pinned, e)}
             className="w-5 h-5 rounded flex items-center justify-center hover:bg-white/10 transition-colors"
             title={note.is_pinned ? "Unpin" : "Pin"}>
-            <Pin className="w-3 h-3"
-              style={{ color: note.is_pinned ? "#C8900A" : "rgba(245,240,232,0.3)" }} />
+            <Pin className="w-3 h-3" style={{ color: note.is_pinned ? "#C8900A" : "rgba(245,240,232,0.3)" }} />
           </button>
           <button onClick={(e) => handleDelete(note.id, e)}
             className="w-5 h-5 rounded flex items-center justify-center hover:bg-red-500/10 transition-colors"
@@ -135,13 +127,29 @@ export function NotesList({ notes: initial, activeId, titleOverride, onSelect, o
         </button>
       </div>
 
-      {/* Notes */}
+      {/* Search */}
+      <div className="px-3 py-2" style={{ borderBottom: "1px solid rgba(255,235,180,0.05)" }}>
+        <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg"
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,235,180,0.07)" }}>
+          <Search className="w-3 h-3 shrink-0" style={{ color: "rgba(245,240,232,0.3)" }} />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search notes..."
+            className="flex-1 bg-transparent text-xs outline-none placeholder:opacity-40"
+            style={{ color: "#F5F0E8" }}
+          />
+        </div>
+      </div>
+
+      {/* Notes list */}
       <div className="flex-1 overflow-y-auto px-2 py-2">
-        {notes.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 gap-2">
             <FileText className="w-5 h-5" style={{ color: "rgba(245,240,232,0.15)" }} />
             <p className="text-xs text-center" style={{ color: "rgba(245,240,232,0.25)" }}>
-              No notes yet
+              {search ? "No matches" : "No notes yet"}
             </p>
           </div>
         ) : (
