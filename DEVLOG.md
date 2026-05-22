@@ -148,6 +148,26 @@ Switching from "load all content upfront" to "lazy-load per note" means the init
 
 ---
 
+## Session 9 — Phase 4: Tracking (2026-05-21)
+
+**Goal:** Build all 6 tracking sections in one session.
+
+**Done:**
+- DB: 7 tables with RLS (habits + habit_logs, subscriptions, goals, reading_list, health_metrics, important_dates)
+- Tracking page with parallel Promise.all fetch for all sections
+- TrackingShell: left nav, section switching
+- Habits: 7-day dot grid per habit, streak count from 60-day log history, 8 color options
+- Subscriptions: monthly burn + annual total cards, billing cycle normalization (weekly×4.33, annual÷12)
+- Goals: progress slider with 5% increments, auto-marks completed at 100%, target date countdown
+- Reading: kanban board (3 columns), star ratings on "done" column, one-click status moves
+- Health: upsert per day (unique user_id+date), emoji mood picker, 7-day compact log
+- Dates: recurring yearly dates (advances to next year if past), urgency highlight within 7 days
+
+**Architecture:**
+- All server actions in one `tracking.ts` file for now — split by domain later if it grows
+- Page uses `Promise.all` for parallel queries — single round-trip for all section data
+- Today's date computed server-side using user's timezone cookie
+
 ## What's next (Phase 4 target)
 
 - General tracking: habits (daily checkmarks, streaks), subscriptions (amount + billing cycle), goals (milestones + progress)

@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Added — Phase 4: Tracking (2026-05-21, Session 9)
+- chore(db): 7 new tables — habits, habit_logs, subscriptions, goals, reading_list, health_metrics, important_dates — all with RLS
+- feat(tracking): /tracking page — parallel server fetch for all sections
+- feat(tracking): TrackingShell — left nav with 6 sections, gold active indicator
+- feat(tracking): Habits — 7-day dot grid, streak counter (🔥), color picker, add/delete
+- feat(tracking): Subscriptions — monthly & annual burn totals, billing cycle, days until next bill
+- feat(tracking): Goals — progress slider (0–100), target date countdown, active/completed split
+- feat(tracking): Reading — 3-column kanban (to-read/reading/done), star ratings, status transitions
+- feat(tracking): Health — daily sleep/water/mood/weight log with emoji mood picker, 7-day history
+- feat(tracking): Dates — birthdays/anniversaries/deadlines, recurring yearly, days-until countdown
+- feat(sidebar): Tracking nav item enabled (live: true)
+
 ### Added — Phase 3: Notes polish (2026-05-21, Session 8 continued)
 - perf(notes): lazy-load note content on demand — page fetches metadata only, content fetched per-note on first open
 - perf(notes): today's journal content pre-fetched server-side so it opens instantly
