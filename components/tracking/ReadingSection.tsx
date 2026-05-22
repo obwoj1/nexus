@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Plus, Trash2, BookOpen } from "lucide-react";
 import { createReadingItemAction, updateReadingStatusAction, deleteReadingItemAction } from "@/app/actions/tracking";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 
 interface ReadingItem {
   id: string; title: string; author: string | null; type: string;
@@ -158,6 +159,72 @@ export function ReadingSection({ reading: initial }: { reading: ReadingItem[] })
           })}
         </div>
       )}
+
+      {/* Charts */}
+      {items.length > 0 && (() => {
+        const statusData = [
+          { name: "To Read", value: items.filter((i) => i.status === "to-read").length, color: "rgba(245,240,232,0.4)" },
+          { name: "Reading",  value: items.filter((i) => i.status === "reading").length, color: "#60A5FA" },
+          { name: "Done",     value: items.filter((i) => i.status === "done").length,    color: "#4ADE80" },
+        ].filter((d) => d.value > 0);
+
+        const ratingCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        items.filter((i) => i.status === "done" && i.rating).forEach((i) => { ratingCounts[i.rating!]++; });
+        const ratingData = Object.entries(ratingCounts).map(([star, count]) => ({ star: `${"★".repeat(Number(star))}`, count }));
+        const hasRatings = ratingData.some((r) => r.count > 0);
+
+        return (
+          <div className="mt-10 grid grid-cols-2 gap-5">
+            {statusData.length > 1 && (
+              <div>
+                <p className="text-[10px] uppercase tracking-widest mb-4" style={{ color: "rgba(245,240,232,0.25)" }}>Library split</p>
+                <div className="p-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,235,180,0.06)" }}>
+                  <ResponsiveContainer width="100%" height={160}>
+                    <PieChart>
+                      <Pie data={statusData} cx="50%" cy="50%" innerRadius={45} outerRadius={65} dataKey="value" paddingAngle={4}>
+                        {statusData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ background: "#0D0C0A", border: "1px solid rgba(200,144,10,0.25)", borderRadius: 8, padding: "6px 10px" }}
+                        formatter={(v, name) => [v, name]}
+                        labelStyle={{ color: "#F5F0E8", fontSize: 11 }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex justify-center gap-4 mt-1">
+                    {statusData.map((d) => (
+                      <div key={d.name} className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: d.color }} />
+                        <span className="text-[10px]" style={{ color: "rgba(245,240,232,0.45)" }}>{d.name} ({d.value})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            {hasRatings && (
+              <div>
+                <p className="text-[10px] uppercase tracking-widest mb-4" style={{ color: "rgba(245,240,232,0.25)" }}>Ratings</p>
+                <div className="p-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,235,180,0.06)" }}>
+                  <ResponsiveContainer width="100%" height={160}>
+                    <BarChart data={ratingData} margin={{ top: 4, right: 4, bottom: 0, left: -22 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,235,180,0.06)" vertical={false} />
+                      <XAxis dataKey="star" tick={{ fill: "rgba(245,240,232,0.5)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={{ fill: "rgba(245,240,232,0.4)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        contentStyle={{ background: "#0D0C0A", border: "1px solid rgba(200,144,10,0.25)", borderRadius: 8, padding: "6px 10px" }}
+                        formatter={(v) => [v, "Books"]}
+                        cursor={{ fill: "rgba(255,255,255,0.03)" }}
+                      />
+                      <Bar dataKey="count" fill="#C8900A" fillOpacity={0.8} radius={[3, 3, 0, 0]} maxBarSize={32} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
