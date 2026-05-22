@@ -6,11 +6,25 @@ import { motion, AnimatePresence } from "framer-motion";
 import { askClaudiaTrackingAction, type ChatMessage } from "@/app/actions/claudiaTracking";
 
 export function ClaudiaPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = sessionStorage.getItem("claudia-messages");
+      return saved ? (JSON.parse(saved) as ChatMessage[]) : [];
+    } catch { return []; }
+  });
   const [input, setInput] = useState("");
   const [isPending, startTransition] = useTransition();
-  const [greeted, setGreeted] = useState(false);
+  const [greeted, setGreeted] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem("claudia-greeted") === "1";
+  });
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Persist messages to sessionStorage
+  useEffect(() => {
+    try { sessionStorage.setItem("claudia-messages", JSON.stringify(messages)); } catch { /* ignore */ }
+  }, [messages]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -21,6 +35,7 @@ export function ClaudiaPanel({ open, onClose }: { open: boolean; onClose: () => 
   useEffect(() => {
     if (open && !greeted) {
       setGreeted(true);
+      try { sessionStorage.setItem("claudia-greeted", "1"); } catch { /* ignore */ }
       startTransition(async () => {
         const { result, error } = await askClaudiaTrackingAction([], true);
         if (result) setMessages([{ role: "assistant", content: result }]);
