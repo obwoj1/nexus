@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Heart } from "lucide-react";
 import { upsertHealthAction } from "@/app/actions/tracking";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 interface HealthMetric {
   date: string; sleep_hours: number | null; water_oz: number | null;
@@ -37,6 +38,15 @@ export function HealthSection({ today, healthRows }: { today: string; healthRows
   }
 
   const recentRows = healthRows.slice(0, 7);
+
+  const healthChartData = [...healthRows]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((r) => ({
+      date: new Date(r.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      sleep: r.sleep_hours ?? undefined,
+      mood: r.mood ?? undefined,
+      water: r.water_oz ?? undefined,
+    }));
 
   return (
     <div className="p-8 max-w-2xl">
@@ -129,6 +139,34 @@ export function HealthSection({ today, healthRows }: { today: string; healthRows
         <div className="flex flex-col items-center justify-center py-10 gap-3">
           <Heart className="w-8 h-8" style={{ color: "rgba(245,240,232,0.1)" }} />
           <p className="text-sm" style={{ color: "rgba(245,240,232,0.25)" }}>Log today to start tracking</p>
+        </div>
+      )}
+
+      {/* Chart */}
+      {healthChartData.length >= 2 && (
+        <div className="mt-10">
+          <p className="text-[10px] uppercase tracking-widest mb-4" style={{ color: "rgba(245,240,232,0.25)" }}>Trends</p>
+          <div className="p-5 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,235,180,0.06)" }}>
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={healthChartData} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,235,180,0.06)" vertical={false} />
+                <XAxis dataKey="date" tick={{ fill: "rgba(245,240,232,0.4)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="sleep" domain={[0, 12]} tick={{ fill: "rgba(245,240,232,0.4)", fontSize: 10 }} axisLine={false} tickLine={false} width={24} />
+                <YAxis yAxisId="mood" orientation="right" domain={[0, 5]} tick={{ fill: "rgba(245,240,232,0.4)", fontSize: 10 }} axisLine={false} tickLine={false} width={20} />
+                <Tooltip
+                  contentStyle={{ background: "#0D0C0A", border: "1px solid rgba(200,144,10,0.25)", borderRadius: 8, padding: "6px 10px" }}
+                  labelStyle={{ color: "rgba(245,240,232,0.5)", fontSize: 10 }}
+                  cursor={{ stroke: "rgba(255,235,180,0.1)" }}
+                />
+                <Legend
+                  iconType="circle" iconSize={6}
+                  formatter={(value) => <span style={{ color: "rgba(245,240,232,0.5)", fontSize: 10 }}>{value}</span>}
+                />
+                <Line yAxisId="sleep" type="monotone" dataKey="sleep" name="Sleep (h)" stroke="#C8900A" strokeWidth={2} dot={{ fill: "#C8900A", r: 3 }} connectNulls />
+                <Line yAxisId="mood" type="monotone" dataKey="mood" name="Mood /5" stroke="#60A5FA" strokeWidth={2} dot={{ fill: "#60A5FA", r: 3 }} connectNulls />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
     </div>
