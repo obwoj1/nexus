@@ -1,40 +1,89 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Pin, Trash2, FileText, BookOpen, Loader2, Search, ChevronDown } from "lucide-react";
+import { Plus, Pin, Trash2, FileText, BookOpen, Loader2, Search, ChevronDown, Globe } from "lucide-react";
 import { createNoteAction, deleteNoteAction, togglePinAction } from "@/app/actions/notes";
+import { saveTimezoneAction } from "@/app/actions/timezone";
 import { formatDistanceToNow } from "date-fns";
 
 export interface NoteItem {
   id: string;
   title: string;
   is_pinned: boolean;
-  is_journal: boolean;
   updated_at: string;
+}
+
+const TIMEZONES = [
+  { value: "America/New_York",    label: "Eastern (EST/EDT)" },
+  { value: "America/Chicago",     label: "Central (CST/CDT)" },
+  { value: "America/Denver",      label: "Mountain (MST/MDT)" },
+  { value: "America/Los_Angeles", label: "Pacific (PST/PDT)" },
+  { value: "Europe/London",       label: "London (GMT/BST)" },
+  { value: "Europe/Paris",        label: "Paris (CET/CEST)" },
+  { value: "Asia/Dubai",          label: "Dubai (GST)" },
+  { value: "Asia/Kolkata",        label: "India (IST)" },
+  { value: "Asia/Tokyo",          label: "Tokyo (JST)" },
+  { value: "Pacific/Auckland",    label: "Auckland (NZST)" },
+];
+
+function tzAbbr(tz: string) {
+  return (
+    new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "short" })
+      .formatToParts(new Date())
+      .find((p) => p.type === "timeZoneName")?.value ?? tz
+  );
+}
+
+// Identify journal notes by title pattern — no DB column required
+function isJournalNote(title: string) {
+  return (
+    title.startsWith("Journal — ") || // old format
+    /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s/.test(title) // new format
+  );
 }
 
 interface Props {
   notes: NoteItem[];
   activeId: string | null;
   titleOverride?: Record<string, string>;
+  todayJournalId?: string | null;
+  timezone: string;
   onSelect: (id: string) => void;
   onCreated: (id: string) => void;
   onDeleted: (id: string) => void;
   onTitleUpdate: (id: string, title: string) => void;
 }
 
-export function NotesList({ notes: initial, activeId, titleOverride, onSelect, onCreated, onDeleted, onTitleUpdate }: Props) {
+export function NotesList({
+  notes: initial,
+  activeId,
+  titleOverride,
+  todayJournalId,
+  timezone,
+  onSelect,
+  onCreated,
+  onDeleted,
+}: Props) {
+  const router = useRouter();
   const [notes, setNotes] = useState(initial);
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
   const [journalOpen, setJournalOpen] = useState(true);
+  const [tzPickerOpen, setTzPickerOpen] = useState(false);
+  const [currentTz, setCurrentTz] = useState(timezone);
 
   function handleCreate() {
     startTransition(async () => {
       const res = await createNoteAction();
       if ("error" in res) { console.error("Failed to create note:", res.error); return; }
-      const newNote: NoteItem = { id: res.id, title: "Untitled", is_pinned: false, is_journal: false, updated_at: new Date().toISOString() };
+      const newNote: NoteItem = {
+        id: res.id,
+        title: "Untitled",
+        is_pinned: false,
+        updated_at: new Date().toISOString(),
+      };
       setNotes((prev) => [newNote, ...prev]);
       onCreated(res.id);
     });
@@ -57,13 +106,20 @@ export function NotesList({ notes: initial, activeId, titleOverride, onSelect, o
     });
   }
 
-  const journalNotes = notes.filter((n) => n.is_journal).sort(
-    (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-  );
+  async function handleTimezoneChange(tz: string) {
+    setCurrentTz(tz);
+    setTzPickerOpen(false);
+    await saveTimezoneAction(tz);
+    router.refresh(); // re-runs the server page → creates today's journal in new timezone
+  }
+
+  const journalNotes = notes
+    .filter((n) => isJournalNote(titleOverride?.[n.id] ?? n.title))
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 
   const q = search.toLowerCase();
   const regularNotes = notes
-    .filter((n) => !n.is_journal)
+    .filter((n) => !isJournalNote(titleOverride?.[n.id] ?? n.title))
     .filter((n) => (titleOverride?.[n.id] ?? n.title).toLowerCase().includes(q));
   const pinned = regularNotes.filter((n) => n.is_pinned);
   const unpinned = regularNotes.filter((n) => !n.is_pinned);
@@ -125,25 +181,98 @@ export function NotesList({ notes: initial, activeId, titleOverride, onSelect, o
 
       {/* ── JOURNAL SECTION ── */}
       <div>
-        <button
-          onClick={() => setJournalOpen((v) => !v)}
-          className="w-full flex items-center justify-between px-4 py-3 transition-colors hover:bg-white/[0.02]"
-          style={{ borderBottom: "1px solid rgba(255,235,180,0.07)" }}
-        >
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-3 h-3" style={{ color: "rgba(200,144,10,0.7)" }} />
+        {/* Journal header row */}
+        <div className="flex items-center px-3 py-3 gap-1"
+          style={{ borderBottom: journalOpen ? "none" : "1px solid rgba(255,235,180,0.07)" }}>
+          <button
+            onClick={() => setJournalOpen((v) => !v)}
+            className="flex-1 flex items-center gap-2 text-left"
+          >
+            <BookOpen className="w-3 h-3 shrink-0" style={{ color: "rgba(200,144,10,0.7)" }} />
             <p className="text-[10px] tracking-widest uppercase font-semibold"
               style={{ color: "rgba(200,144,10,0.7)" }}>Journal</p>
-          </div>
-          <ChevronDown
-            className="w-3 h-3 transition-transform duration-200"
-            style={{
-              color: "rgba(245,240,232,0.3)",
-              transform: journalOpen ? "rotate(0deg)" : "rotate(-90deg)",
-            }}
-          />
-        </button>
+            <ChevronDown
+              className="w-3 h-3 transition-transform duration-200"
+              style={{
+                color: "rgba(245,240,232,0.3)",
+                transform: journalOpen ? "rotate(0deg)" : "rotate(-90deg)",
+              }}
+            />
+          </button>
 
+          {/* Today button */}
+          {todayJournalId && (
+            <button
+              onClick={() => onSelect(todayJournalId)}
+              className="px-2 py-0.5 rounded text-[9px] font-semibold tracking-wider uppercase transition-colors"
+              style={{
+                background: activeId === todayJournalId ? "rgba(200,144,10,0.2)" : "rgba(200,144,10,0.08)",
+                border: "1px solid rgba(200,144,10,0.25)",
+                color: "#C8900A",
+              }}
+              title="Open today's journal entry"
+            >
+              Today
+            </button>
+          )}
+
+          {/* Timezone picker */}
+          <div className="relative">
+            <button
+              onClick={() => setTzPickerOpen((v) => !v)}
+              className="w-6 h-6 rounded flex items-center justify-center transition-colors hover:bg-white/5"
+              title={`Journal timezone: ${currentTz}`}
+            >
+              <Globe className="w-3 h-3" style={{ color: "rgba(245,240,232,0.25)" }} />
+            </button>
+
+            <AnimatePresence>
+              {tzPickerOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                  transition={{ duration: 0.12 }}
+                  className="absolute left-0 top-full mt-1 z-50 rounded-xl overflow-hidden"
+                  style={{
+                    background: "#0D0C0A",
+                    border: "1px solid rgba(200,144,10,0.2)",
+                    boxShadow: "0 16px 40px rgba(0,0,0,0.7)",
+                    minWidth: "200px",
+                  }}
+                >
+                  <div className="px-3 py-2 border-b" style={{ borderColor: "rgba(255,235,180,0.08)" }}>
+                    <p className="text-[9px] tracking-widest uppercase font-semibold"
+                      style={{ color: "rgba(245,240,232,0.35)" }}>
+                      Journal timezone · {tzAbbr(currentTz)}
+                    </p>
+                  </div>
+                  {TIMEZONES.map((tz) => (
+                    <button
+                      key={tz.value}
+                      onClick={() => handleTimezoneChange(tz.value)}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs text-left transition-colors"
+                      style={{
+                        color: currentTz === tz.value ? "#C8900A" : "rgba(245,240,232,0.7)",
+                        background: currentTz === tz.value ? "rgba(200,144,10,0.08)" : "transparent",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(200,144,10,0.1)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background =
+                        currentTz === tz.value ? "rgba(200,144,10,0.08)" : "transparent")}
+                    >
+                      {tz.label}
+                      {currentTz === tz.value && (
+                        <span className="text-[9px]" style={{ color: "#C8900A" }}>✓</span>
+                      )}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* Journal entries */}
         <AnimatePresence initial={false}>
           {journalOpen && (
             <motion.div
@@ -153,11 +282,11 @@ export function NotesList({ notes: initial, activeId, titleOverride, onSelect, o
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className="px-2 py-1.5"
+              <div className="px-2 pb-1 pt-1"
                 style={{ borderBottom: "1px solid rgba(255,235,180,0.07)" }}>
                 {journalNotes.length === 0 ? (
                   <p className="text-[10px] text-center py-3" style={{ color: "rgba(245,240,232,0.2)" }}>
-                    No journal entries yet
+                    No entries yet
                   </p>
                 ) : (
                   journalNotes.map((n) => <NoteRow key={n.id} note={n} isJournal />)

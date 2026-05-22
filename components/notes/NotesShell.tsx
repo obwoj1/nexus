@@ -16,17 +16,14 @@ const NoteEditor = dynamic(
 import { FileText } from "lucide-react";
 import type { Block } from "@blocknote/core";
 
-interface NoteWithContent extends NoteItem {
-  content: Block[];
-}
-
 interface Props {
   initialNotes: NoteItem[];
   noteContents: Record<string, Block[]>;
   journalId: string | null;
+  timezone: string;
 }
 
-export function NotesShell({ initialNotes, noteContents, journalId }: Props) {
+export function NotesShell({ initialNotes, noteContents, journalId, timezone }: Props) {
   const [activeId, setActiveId] = useState<string | null>(
     journalId ?? initialNotes[0]?.id ?? null
   );
@@ -65,6 +62,8 @@ export function NotesShell({ initialNotes, noteContents, journalId }: Props) {
           notes={initialNotes}
           activeId={activeId}
           titleOverride={titleMap}
+          todayJournalId={journalId}
+          timezone={timezone}
           onSelect={setActiveId}
           onCreated={handleCreated}
           onDeleted={handleDeleted}
