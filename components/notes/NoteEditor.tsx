@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
@@ -15,9 +16,9 @@ interface Props {
 }
 
 export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange }: Props) {
+  const router = useRouter();
   const [title, setTitle] = useState(initialTitle);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
-  const [debugBlocks, setDebugBlocks] = useState(initialContent.length);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleRef = useRef(initialTitle);
   const pendingContentRef = useRef<Block[] | null>(null);
@@ -25,9 +26,8 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
 
   const editor = useCreateBlockNote();
 
-  // Load saved content after mount — setTimeout(0) ensures ProseMirror view is ready
+  // Load saved content imperatively after mount
   useEffect(() => {
-    setDebugBlocks(initialContent.length);
     const t = setTimeout(() => {
       if (initialContent.length > 0) {
         try {
@@ -56,10 +56,12 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
           setSaveStatus("unsaved");
         } else {
           setSaveStatus("saved");
+          // Sync the Next.js router cache so navigating away and back shows fresh data
+          router.refresh();
         }
       }, 500);
     },
-    [noteId]
+    [noteId, router]
   );
 
   useEffect(() => {
@@ -103,12 +105,6 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
           className="w-full text-3xl font-semibold tracking-tight bg-transparent border-none outline-none placeholder:opacity-20"
           style={{ color: "#F5F0E8" }}
         />
-      </div>
-
-      <div className="px-12 mb-1">
-        <span className="text-[10px] font-mono" style={{ color: "rgba(245,240,232,0.25)" }}>
-          blocks from db: {debugBlocks}
-        </span>
       </div>
 
       <div className="px-12 mb-4">
