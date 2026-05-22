@@ -224,3 +224,153 @@
       #080705;
   }
 }
+
+/* ── BlockNote Nexus Theme ───────────────────────────────────────────────── */
+
+/* Root container — transparent so Nexus bg shows through */
+.blocknote-nexus .bn-editor {
+  background: transparent !important;
+  color: #F5F0E8 !important;
+  font-family: var(--font-geist-sans, 'Geist Sans', system-ui, sans-serif) !important;
+}
+
+/* Placeholder text */
+.blocknote-nexus .bn-block-content.bn-is-empty-and-focused::before,
+.blocknote-nexus [data-is-empty-and-focused="true"] .bn-inline-content::before {
+  color: rgba(245, 240, 232, 0.18) !important;
+}
+
+/* Selection highlight — gold tint */
+.blocknote-nexus ::selection {
+  background: rgba(200, 144, 10, 0.22) !important;
+}
+
+/* Side drag handle / + button */
+.blocknote-nexus .bn-side-menu {
+  color: rgba(245, 240, 232, 0.25) !important;
+}
+.blocknote-nexus .bn-side-menu button:hover {
+  background: rgba(200, 144, 10, 0.12) !important;
+  color: #C8900A !important;
+}
+
+/* Slash command + formatting suggestion menu */
+.blocknote-nexus .bn-suggestion-menu {
+  background: #0D0C0A !important;
+  border: 1px solid rgba(200, 144, 10, 0.18) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(200,144,10,0.08) !important;
+  backdrop-filter: blur(20px) !important;
+  padding: 4px !important;
+}
+.blocknote-nexus .bn-suggestion-menu-item {
+  border-radius: 8px !important;
+  color: rgba(245, 240, 232, 0.8) !important;
+}
+.blocknote-nexus .bn-suggestion-menu-item[data-selected="true"],
+.blocknote-nexus .bn-suggestion-menu-item:hover {
+  background: rgba(200, 144, 10, 0.12) !important;
+  color: #F5F0E8 !important;
+}
+.blocknote-nexus .bn-suggestion-menu-label {
+  color: rgba(200, 144, 10, 0.6) !important;
+  font-size: 10px !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+.blocknote-nexus .bn-mt-suggestion-menu-item-title {
+  color: #F5F0E8 !important;
+  font-weight: 500 !important;
+}
+.blocknote-nexus .bn-mt-suggestion-menu-item-subtitle {
+  color: rgba(245, 240, 232, 0.4) !important;
+  font-size: 11px !important;
+}
+
+/* Formatting toolbar */
+.blocknote-nexus .bn-toolbar {
+  background: #0D0C0A !important;
+  border: 1px solid rgba(200, 144, 10, 0.18) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6) !important;
+  padding: 4px !important;
+}
+.blocknote-nexus .bn-toolbar button {
+  color: rgba(245, 240, 232, 0.7) !important;
+  border-radius: 6px !important;
+}
+.blocknote-nexus .bn-toolbar button:hover {
+  background: rgba(200, 144, 10, 0.12) !important;
+  color: #F5F0E8 !important;
+}
+.blocknote-nexus .bn-toolbar button[data-selected="true"],
+.blocknote-nexus .bn-toolbar button[aria-pressed="true"] {
+  background: rgba(200, 144, 10, 0.2) !important;
+  color: #C8900A !important;
+}
+
+/* Tooltip */
+.blocknote-nexus .bn-tooltip {
+  background: #111 !important;
+  border: 1px solid rgba(200, 144, 10, 0.15) !important;
+  color: rgba(245, 240, 232, 0.8) !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+}
+
+/* Inline link color */
+.blocknote-nexus a {
+  color: #C8900A !important;
+  text-decoration: underline;
+  text-decoration-color: rgba(200, 144, 10, 0.4);
+}
+.blocknote-nexus a:hover {
+  color: #E8B428 !important;
+  text-decoration-color: rgba(232, 180, 40, 0.6);
+}
+
+/* Heading hierarchy */
+.blocknote-nexus h1 { font-size: 1.75rem !important; font-weight: 700 !important; letter-spacing: -0.02em !important; }
+.blocknote-nexus h2 { font-size: 1.375rem !important; font-weight: 600 !important; letter-spacing: -0.01em !important; }
+.blocknote-nexus h3 { font-size: 1.125rem !important; font-weight: 600 !important; }
+
+/* Inline code */
+.blocknote-nexus code {
+  background: rgba(200, 144, 10, 0.1) !important;
+  color: #E8B428 !important;
+  border-radius: 4px !important;
+  padding: 0 4px !important;
+  font-family: var(--font-geist-mono, monospace) !important;
+  font-size: 0.875em !important;
+}
+
+/* Code block */
+.blocknote-nexus pre {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 235, 180, 0.08) !important;
+  border-radius: 10px !important;
+  padding: 16px !important;
+}
+
+/* Blockquote / callout border */
+.blocknote-nexus blockquote {
+  border-left: 3px solid rgba(200, 144, 10, 0.4) !important;
+  padding-left: 12px !important;
+  color: rgba(245, 240, 232, 0.65) !important;
+}
+
+/* Drag handle menu */
+.blocknote-nexus .bn-drag-handle-menu {
+  background: #0D0C0A !important;
+  border: 1px solid rgba(200, 144, 10, 0.18) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Action toolbar (text colour picker, etc.) */
+.blocknote-nexus .bn-action-toolbar {
+  background: #0D0C0A !important;
+  border: 1px solid rgba(200, 144, 10, 0.18) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6) !important;
+}

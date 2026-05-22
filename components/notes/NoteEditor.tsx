@@ -4,9 +4,37 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
+import type { Theme } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
 import { saveNoteAction } from "@/app/actions/notes";
 import type { Block, PartialBlock } from "@blocknote/core";
+
+const nexusTheme: Theme = {
+  colors: {
+    editor:   { text: "#F5F0E8",               background: "transparent" },
+    menu:     { text: "#F5F0E8",               background: "#0D0C0A" },
+    tooltip:  { text: "rgba(245,240,232,0.8)", background: "#111111" },
+    hovered:  { text: "#F5F0E8",               background: "rgba(200,144,10,0.12)" },
+    selected: { text: "#F5F0E8",               background: "rgba(200,144,10,0.20)" },
+    disabled: { text: "rgba(245,240,232,0.3)", background: "transparent" },
+    shadow: "rgba(0,0,0,0.65)",
+    border: "rgba(200,144,10,0.18)",
+    sideMenu: "rgba(245,240,232,0.25)",
+    highlights: {
+      gray:   { text: "#9E9E9E", background: "rgba(158,158,158,0.12)" },
+      brown:  { text: "#A1887F", background: "rgba(161,136,127,0.12)" },
+      red:    { text: "#EF5350", background: "rgba(239,83,80,0.12)" },
+      orange: { text: "#FFA726", background: "rgba(255,167,38,0.12)" },
+      yellow: { text: "#F5CE58", background: "rgba(245,206,88,0.12)" },
+      green:  { text: "#66BB6A", background: "rgba(102,187,106,0.12)" },
+      blue:   { text: "#42A5F5", background: "rgba(66,165,245,0.12)" },
+      purple: { text: "#AB47BC", background: "rgba(171,71,188,0.12)" },
+      pink:   { text: "#EC407A", background: "rgba(236,64,122,0.12)" },
+    },
+  },
+  borderRadius: 8,
+  fontFamily: "'Geist Sans', system-ui, sans-serif",
+};
 
 interface Props {
   noteId: string;
@@ -120,7 +148,7 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
       </div>
 
       <div className="flex-1 px-8 overflow-y-auto blocknote-nexus">
-        <BlockNoteView editor={editor} theme="dark" />
+        <BlockNoteView editor={editor} theme={nexusTheme} />
       </div>
     </div>
   );
