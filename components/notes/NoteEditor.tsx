@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AIAssist } from "./AIAssist";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import type { Theme } from "@blocknote/mantine";
@@ -135,7 +136,7 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
         />
       </div>
 
-      <div className="px-12 mb-4">
+      <div className="px-12 mb-4 flex items-center gap-3">
         <span className="text-xs" style={{
           color: saveStatus === "saved"
             ? "rgba(74,222,128,0.5)"
@@ -145,6 +146,7 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
         }}>
           {saveStatus === "saved" ? "Saved" : saveStatus === "saving" ? "Saving…" : "Unsaved changes"}
         </span>
+        <AIAssist editor={editor} />
       </div>
 
       <div className="flex-1 px-8 overflow-y-auto blocknote-nexus">
