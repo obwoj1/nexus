@@ -127,6 +127,27 @@ Learned that Supabase PostgREST errors when you select a non-existent column, an
 
 ---
 
+## Session 8 — Phase 3 edge cases + performance (2026-05-21)
+
+**Goal:** Long-term journal health, edge cases, lazy loading.
+
+**Done:**
+- Removed Ask Claudia (selection bug unfixable without deeper Tiptap work — revisit Phase 7)
+- Lazy content loading: page now fetches only metadata for all notes; content loaded on demand per note; journal pre-fetched server-side so it opens instantly
+- Journal sidebar: shows only today + collapsible "Recent" section (last 7 past entries)
+- Timezone picker in journal header — saves to cookie, server reads it on next load to create journal with correct date
+
+**Edge cases identified:**
+- Empty note title saves as "" but displays as "Untitled" in sidebar (acceptable, handled by fallback)
+- All journal entries (by title pattern) excluded from regular NOTES section so no collision
+- New notes created optimistically get empty content in cache — no unnecessary fetch
+- Content for deleted notes removed from cache to prevent memory leak
+
+**Architecture win:**
+Switching from "load all content upfront" to "lazy-load per note" means the initial page payload stays small regardless of how many notes/journal entries accumulate. Today's journal is the only content fetched at server render time.
+
+---
+
 ## What's next (Phase 4 target)
 
 - General tracking: habits (daily checkmarks, streaks), subscriptions (amount + billing cycle), goals (milestones + progress)

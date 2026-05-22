@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added — Phase 3: Notes polish (2026-05-21, Session 8 continued)
+- perf(notes): lazy-load note content on demand — page fetches metadata only, content fetched per-note on first open
+- perf(notes): today's journal content pre-fetched server-side so it opens instantly
+- feat(notes): collapsible "Recent" section in journal sidebar — last 7 past entries, expandable
+- fix(notes): removed Ask Claudia from editor (selection bug, revisit Phase 7)
+- fix(notes): journal sidebar shows only today; past entries via Recent section
+
 ### Added — Phase 3: Notes (2026-05-21, Sessions 5–8)
 - feat(db): notes table with RLS — id, user_id, title, content (jsonb), is_pinned, is_journal, created_at, updated_at
 - feat(notes): full Notion-style block editor via BlockNote v0.51.1, dark/gold Nexus theme
