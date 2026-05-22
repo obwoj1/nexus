@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Flame, CreditCard, Target, BookOpen, Heart, CalendarDays } from "lucide-react";
+import { Flame, CreditCard, Target, BookOpen, Heart, CalendarDays, Sparkles } from "lucide-react";
 import { HabitsSection } from "./HabitsSection";
 import { SubscriptionsSection } from "./SubscriptionsSection";
 import { GoalsSection } from "./GoalsSection";
 import { ReadingSection } from "./ReadingSection";
 import { HealthSection } from "./HealthSection";
 import { DatesSection } from "./DatesSection";
+import { ClaudiaPanel } from "./ClaudiaPanel";
 
 type Section = "habits" | "subscriptions" | "goals" | "reading" | "health" | "dates";
 
@@ -23,6 +24,7 @@ const NAV: { key: Section; label: string; icon: React.ReactNode }[] = [
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function TrackingShell(props: any) {
   const [active, setActive] = useState<Section>("habits");
+  const [claudiaOpen, setClaudiaOpen] = useState(false);
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -53,6 +55,22 @@ export function TrackingShell(props: any) {
             </button>
           );
         })}
+
+        {/* Claudia button at bottom of nav */}
+        <div className="mt-auto pt-3" style={{ borderTop: "1px solid rgba(200,144,10,0.1)" }}>
+          <button
+            onClick={() => setClaudiaOpen((v) => !v)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
+            style={{
+              background: claudiaOpen ? "rgba(200,144,10,0.12)" : "transparent",
+              border: claudiaOpen ? "1px solid rgba(200,144,10,0.25)" : "1px solid transparent",
+              color: claudiaOpen ? "#F5CE58" : "rgba(200,144,10,0.7)",
+            }}
+          >
+            <Sparkles className="w-4 h-4 shrink-0" />
+            <span>Ask Claudia</span>
+          </button>
+        </div>
       </nav>
 
       {/* Content */}
@@ -64,6 +82,9 @@ export function TrackingShell(props: any) {
         {active === "health"        && <HealthSection        today={props.today} healthRows={props.healthRows} />}
         {active === "dates"         && <DatesSection         dates={props.dates} today={props.today} />}
       </div>
+
+      {/* Claudia sliding panel */}
+      <ClaudiaPanel open={claudiaOpen} onClose={() => setClaudiaOpen(false)} />
     </div>
   );
 }
