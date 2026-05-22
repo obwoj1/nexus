@@ -11,11 +11,14 @@ export default async function NotesPage() {
 
   const admin = createAdminClient();
 
-  // Daily journal — ensure today's note exists
-  const todayLabel = new Date().toLocaleDateString("en-US", {
-    weekday: "short", month: "short", day: "numeric",
-  });
-  const journalTitle = `Journal — ${todayLabel}`;
+  // Daily journal — full date in EST timezone
+  const journalTitle = new Date().toLocaleDateString("en-US", {
+    timeZone: "America/New_York",
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }); // e.g. "Wednesday, May 21, 2026"
 
   const { data: existing } = await admin
     .from("notes")
@@ -25,13 +28,18 @@ export default async function NotesPage() {
     .maybeSingle();
 
   if (!existing) {
-    await admin.from("notes").insert({ user_id: user.id, title: journalTitle, content: [] });
+    await admin.from("notes").insert({
+      user_id: user.id,
+      title: journalTitle,
+      content: [],
+      is_journal: true,
+    });
   }
 
-  // Fetch all notes (journal will now be included)
+  // Fetch all notes
   const { data: notes } = await admin
     .from("notes")
-    .select("id, title, is_pinned, updated_at, content")
+    .select("id, title, is_pinned, is_journal, updated_at, content")
     .eq("user_id", user.id)
     .order("is_pinned", { ascending: false })
     .order("updated_at", { ascending: false });
@@ -40,6 +48,7 @@ export default async function NotesPage() {
     id: n.id,
     title: n.title,
     is_pinned: n.is_pinned,
+    is_journal: n.is_journal ?? false,
     updated_at: n.updated_at,
   }));
 
@@ -47,7 +56,6 @@ export default async function NotesPage() {
     (notes ?? []).map((n) => [n.id, (n.content as Block[]) ?? []])
   );
 
-  // Pass the journal note id so the shell can open it by default
   const journalId = (notes ?? []).find((n) => n.title === journalTitle)?.id ?? null;
 
   return (
