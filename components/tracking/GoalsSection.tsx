@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Plus, Trash2, Target } from "lucide-react";
 import { createGoalAction, updateGoalProgressAction, deleteGoalAction } from "@/app/actions/tracking";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 interface Goal {
   id: string; title: string; description: string | null;
@@ -41,6 +42,12 @@ export function GoalsSection({ goals: initial }: { goals: Goal[] }) {
 
   const active = goals.filter((g) => g.status !== "completed");
   const completed = goals.filter((g) => g.status === "completed");
+
+  const goalChartData = goals.map((g) => ({
+    name: g.title.length > 16 ? g.title.slice(0, 16) + "…" : g.title,
+    progress: g.progress,
+    done: g.status === "completed",
+  }));
 
   return (
     <div className="p-8 max-w-3xl">
@@ -96,6 +103,32 @@ export function GoalsSection({ goals: initial }: { goals: Goal[] }) {
               {completed.map((goal) => <GoalCard key={goal.id} goal={goal} onProgress={handleProgress} onDelete={handleDelete} />)}
             </>
           )}
+        </div>
+      )}
+
+      {/* Chart */}
+      {goals.length > 0 && (
+        <div className="mt-10">
+          <p className="text-[10px] uppercase tracking-widest mb-4" style={{ color: "rgba(245,240,232,0.25)" }}>Progress overview</p>
+          <div className="p-5 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,235,180,0.06)" }}>
+            <ResponsiveContainer width="100%" height={Math.max(120, goalChartData.length * 36)}>
+              <BarChart data={goalChartData} layout="vertical" margin={{ top: 0, right: 40, bottom: 0, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,235,180,0.06)" horizontal={false} />
+                <XAxis type="number" domain={[0, 100]} tick={{ fill: "rgba(245,240,232,0.4)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
+                <YAxis type="category" dataKey="name" tick={{ fill: "rgba(245,240,232,0.5)", fontSize: 10 }} axisLine={false} tickLine={false} width={110} />
+                <Tooltip
+                  contentStyle={{ background: "#0D0C0A", border: "1px solid rgba(200,144,10,0.25)", borderRadius: 8, padding: "6px 10px" }}
+                  formatter={(v) => [`${v}%`, "Progress"]}
+                  cursor={{ fill: "rgba(255,255,255,0.03)" }}
+                />
+                <Bar dataKey="progress" radius={[0, 3, 3, 0]} maxBarSize={20}>
+                  {goalChartData.map((entry, i) => (
+                    <Cell key={i} fill={entry.done ? "#4ADE80" : "#C8900A"} fillOpacity={entry.done ? 0.7 : 0.85} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
     </div>
