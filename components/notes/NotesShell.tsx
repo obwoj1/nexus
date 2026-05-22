@@ -23,11 +23,12 @@ interface NoteWithContent extends NoteItem {
 interface Props {
   initialNotes: NoteItem[];
   noteContents: Record<string, Block[]>;
+  journalId: string | null;
 }
 
-export function NotesShell({ initialNotes, noteContents }: Props) {
+export function NotesShell({ initialNotes, noteContents, journalId }: Props) {
   const [activeId, setActiveId] = useState<string | null>(
-    initialNotes[0]?.id ?? null
+    journalId ?? initialNotes[0]?.id ?? null
   );
   const [titleMap, setTitleMap] = useState<Record<string, string>>(
     Object.fromEntries(initialNotes.map((n) => [n.id, n.title]))
