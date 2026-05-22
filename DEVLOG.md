@@ -168,6 +168,23 @@ Switching from "load all content upfront" to "lazy-load per note" means the init
 - Page uses `Promise.all` for parallel queries — single round-trip for all section data
 - Today's date computed server-side using user's timezone cookie
 
+---
+
+## Session 10 — Phase 4: Claudia AI integration (2026-05-21)
+
+**Goal:** Give Claudia live access to all tracking data and build an interactive chat panel.
+
+**Done:**
+- `app/actions/claudiaTracking.ts` — server action that runs `Promise.all` across all 7 tracking tables, formats data as structured text (completion rates, streaks, burn totals, days-until, avg sleep/mood), injects into Claude's system prompt, calls `claude-sonnet-4-6` with full conversation history
+- `components/tracking/ClaudiaPanel.tsx` — 360px right-side panel, spring animation, chat interface, bouncing dots typing indicator, auto-generates personalized greeting on first open
+- `TrackingShell.tsx` — "Ask Claudia" button at bottom of left nav; panel slides in/out alongside content area
+
+**How Claudia accesses data:**
+Claudia does NOT have a direct database connection. The server action (`askClaudiaTrackingAction`) is what connects to Supabase — it fetches the data, formats it into a readable text block, and injects it as the Claude `system` prompt each turn. Claude's "knowledge" of your data is entirely from that formatted context window. The flow per message is: authenticate user → fetch all tables → format context → build system prompt with context embedded → send to Claude API → return response.
+
+**Architecture note:**
+Full conversation history is passed to Claude every turn (as `messages` array). This means Claudia remembers earlier parts of the chat within the session and can answer follow-up questions referencing previous context. History is held in React state only — not persisted to DB, so it resets on panel close.
+
 ## What's next (Phase 4 target)
 
 - General tracking: habits (daily checkmarks, streaks), subscriptions (amount + billing cycle), goals (milestones + progress)

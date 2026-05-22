@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added — Phase 4: Claudia AI (2026-05-21, Session 10)
+- feat(tracking): Claudia AI integration — `askClaudiaTrackingAction` fetches all 7 tracking tables, formats context, calls claude-sonnet-4-6 with full conversation history
+- feat(tracking): ClaudiaPanel — 360px sliding right panel with spring animation, bouncing dots indicator, auto-greeting on first open
+- feat(tracking): Ask Claudia button in TrackingShell left nav (bottom), toggles panel open/closed
+
 ### Added — Phase 4: Tracking (2026-05-21, Session 9)
 - chore(db): 7 new tables — habits, habit_logs, subscriptions, goals, reading_list, health_metrics, important_dates — all with RLS
 - feat(tracking): /tracking page — parallel server fetch for all sections
