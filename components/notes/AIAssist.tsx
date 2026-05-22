@@ -13,18 +13,24 @@ const MODES = [
   { key: "fix"       as const, label: "Fix grammar" },
 ];
 
+interface SelectionSnapshot {
+  from: number;
+  to: number;
+  text: string;
+}
+
 interface Props {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   editor: BlockNoteEditor<any, any, any>;
 }
 
 export function AIAssist({ editor }: Props) {
-  const [hasSelection, setHasSelection] = useState(false);
+  const [active, setActive] = useState(false);   // visual: text is selected
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeMode, setActiveMode] = useState<string | null>(null);
-  // Store selection range in a ref so it survives the blur that happens on mousedown
-  const selectionRef = useRef<{ from: number; to: number } | null>(null);
+  // Snapshot survives editor blur — stores range + text at selection time
+  const snapshotRef = useRef<SelectionSnapshot | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -32,12 +38,13 @@ export function AIAssist({ editor }: Props) {
       const { state } = editor._tiptapEditor;
       const { from, to } = state.selection;
       if (from === to) {
-        selectionRef.current = null;
-        setHasSelection(false);
+        snapshotRef.current = null;
+        setActive(false);
         setOpen(false);
       } else {
-        selectionRef.current = { from, to };
-        setHasSelection(true);
+        const text = state.doc.textBetween(from, to, " ").trim();
+        snapshotRef.current = { from, to, text };
+        setActive(true);
       }
     });
     return unsubscribe;
@@ -54,55 +61,61 @@ export function AIAssist({ editor }: Props) {
   }, []);
 
   async function handleMode(mode: typeof MODES[number]["key"]) {
-    const sel = selectionRef.current;
-    if (!sel) return;
-
-    // Read text from stored range (selection may have been lost by now)
-    const { state } = editor._tiptapEditor;
-    const text = state.doc.textBetween(sel.from, sel.to, " ").trim();
-    if (!text) return;
+    const snap = snapshotRef.current;
+    if (!snap || !snap.text) return;
 
     setLoading(true);
     setActiveMode(mode);
     setOpen(false);
 
-    const { result, error } = await aiAssistAction(text, mode);
+    const { result, error } = await aiAssistAction(snap.text, mode);
 
     if (error || !result) {
       console.error("[AIAssist]", error);
     } else {
-      // Restore selection then replace with Claudia's response
       editor._tiptapEditor
         .chain()
-        .setTextSelection({ from: sel.from, to: sel.to })
+        .setTextSelection({ from: snap.from, to: snap.to })
         .insertContent(result)
         .run();
     }
 
-    selectionRef.current = null;
-    setHasSelection(false);
+    snapshotRef.current = null;
+    setActive(false);
     setLoading(false);
     setActiveMode(null);
+  }
+
+  function handleButtonClick() {
+    // Use ref directly — avoids stale-state timing issues after editor events
+    if (snapshotRef.current && !loading) {
+      setOpen((v) => !v);
+    }
   }
 
   return (
     <div ref={containerRef} className="relative">
       <button
-        // preventDefault keeps editor focus so ProseMirror doesn't clear the selection
+        // preventDefault preserves ProseMirror selection on mousedown
         onMouseDown={(e) => e.preventDefault()}
-        onClick={() => { if (hasSelection && !loading) setOpen((v) => !v); }}
-        disabled={!hasSelection || loading}
-        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all duration-200 disabled:opacity-30 disabled:cursor-default"
+        onClick={handleButtonClick}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200"
         style={{
-          background: hasSelection ? "rgba(200,144,10,0.12)" : "transparent",
-          border: `1px solid ${hasSelection ? "rgba(200,144,10,0.3)" : "rgba(255,235,180,0.08)"}`,
-          color: hasSelection ? "#C8900A" : "rgba(245,240,232,0.3)",
+          background: active
+            ? "rgba(200,144,10,0.15)"
+            : loading
+            ? "rgba(200,144,10,0.08)"
+            : "rgba(255,255,255,0.04)",
+          border: `1px solid ${active || loading ? "rgba(200,144,10,0.35)" : "rgba(255,235,180,0.1)"}`,
+          color: active || loading ? "#C8900A" : "rgba(245,240,232,0.35)",
+          cursor: active && !loading ? "pointer" : "default",
+          boxShadow: active ? "0 0 12px -2px rgba(200,144,10,0.2)" : "none",
         }}
-        title={hasSelection ? "Ask Claudia to transform selected text" : "Select text to use AI assist"}
+        title={active ? "Ask Claudia to transform selected text" : "Select text to use AI assist"}
       >
         {loading
-          ? <Loader2 className="w-3 h-3 animate-spin" />
-          : <Sparkles className="w-3 h-3" />}
+          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          : <Sparkles className="w-3.5 h-3.5" />}
         <span>{loading ? (activeMode ?? "Thinking…") : "Ask Claudia"}</span>
       </button>
 
@@ -116,17 +129,21 @@ export function AIAssist({ editor }: Props) {
             className="absolute top-full mt-1.5 right-0 z-50 rounded-xl overflow-hidden"
             style={{
               background: "#0D0C0A",
-              border: "1px solid rgba(200,144,10,0.2)",
-              boxShadow: "0 16px 40px rgba(0,0,0,0.7)",
-              minWidth: "140px",
+              border: "1px solid rgba(200,144,10,0.25)",
+              boxShadow: "0 16px 40px rgba(0,0,0,0.7), 0 0 0 1px rgba(200,144,10,0.05)",
+              minWidth: "148px",
             }}
           >
+            <div className="px-3 py-2 border-b" style={{ borderColor: "rgba(200,144,10,0.12)" }}>
+              <p className="text-[9px] tracking-widest uppercase font-semibold"
+                style={{ color: "rgba(200,144,10,0.6)" }}>Claudia AI</p>
+            </div>
             {MODES.map((m) => (
               <button
                 key={m.key}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handleMode(m.key)}
-                className="w-full flex items-center px-3 py-2 text-xs text-left transition-colors"
+                className="w-full flex items-center px-3 py-2.5 text-xs text-left transition-colors"
                 style={{ color: "rgba(245,240,232,0.8)" }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(200,144,10,0.1)")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
