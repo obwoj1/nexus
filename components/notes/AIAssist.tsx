@@ -19,29 +19,30 @@ interface Props {
 }
 
 export function AIAssist({ editor }: Props) {
-  const [selectedText, setSelectedText] = useState("");
+  const [hasSelection, setHasSelection] = useState(false);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeMode, setActiveMode] = useState<string | null>(null);
+  // Store selection range in a ref so it survives the blur that happens on mousedown
+  const selectionRef = useRef<{ from: number; to: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Track text selection via BlockNote's selection change event
   useEffect(() => {
     const unsubscribe = editor.onSelectionChange(() => {
       const { state } = editor._tiptapEditor;
       const { from, to } = state.selection;
       if (from === to) {
-        setSelectedText("");
+        selectionRef.current = null;
+        setHasSelection(false);
         setOpen(false);
       } else {
-        const text = state.doc.textBetween(from, to, " ");
-        setSelectedText(text.trim());
+        selectionRef.current = { from, to };
+        setHasSelection(true);
       }
     });
     return unsubscribe;
   }, [editor]);
 
-  // Close dropdown on outside click
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -53,30 +54,42 @@ export function AIAssist({ editor }: Props) {
   }, []);
 
   async function handleMode(mode: typeof MODES[number]["key"]) {
-    if (!selectedText) return;
+    const sel = selectionRef.current;
+    if (!sel) return;
+
+    // Read text from stored range (selection may have been lost by now)
+    const { state } = editor._tiptapEditor;
+    const text = state.doc.textBetween(sel.from, sel.to, " ").trim();
+    if (!text) return;
+
     setLoading(true);
     setActiveMode(mode);
     setOpen(false);
 
-    const { result, error } = await aiAssistAction(selectedText, mode);
+    const { result, error } = await aiAssistAction(text, mode);
 
     if (error || !result) {
       console.error("[AIAssist]", error);
     } else {
-      // Replace selected text with Claudia's response
-      editor._tiptapEditor.commands.insertContent(result);
+      // Restore selection then replace with Claudia's response
+      editor._tiptapEditor
+        .chain()
+        .setTextSelection({ from: sel.from, to: sel.to })
+        .insertContent(result)
+        .run();
     }
 
+    selectionRef.current = null;
+    setHasSelection(false);
     setLoading(false);
     setActiveMode(null);
-    setSelectedText("");
   }
-
-  const hasSelection = selectedText.length > 0;
 
   return (
     <div ref={containerRef} className="relative">
       <button
+        // preventDefault keeps editor focus so ProseMirror doesn't clear the selection
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => { if (hasSelection && !loading) setOpen((v) => !v); }}
         disabled={!hasSelection || loading}
         className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all duration-200 disabled:opacity-30 disabled:cursor-default"
@@ -111,6 +124,7 @@ export function AIAssist({ editor }: Props) {
             {MODES.map((m) => (
               <button
                 key={m.key}
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handleMode(m.key)}
                 className="w-full flex items-center px-3 py-2 text-xs text-left transition-colors"
                 style={{ color: "rgba(245,240,232,0.8)" }}
