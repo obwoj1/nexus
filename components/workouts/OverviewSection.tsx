@@ -53,6 +53,18 @@ export function OverviewSection({
       .sort((a, b) => b.volume - a.volume);
   }, [allSessions]);
 
+  // ── Workout streak (consecutive days ending today) ────────────────────────
+  const streak = useMemo(() => {
+    const dates = new Set(allSessions.map((s) => s.date));
+    let count = 0;
+    const d = new Date(today);
+    while (dates.has(d.toISOString().split("T")[0])) {
+      count++;
+      d.setDate(d.getDate() - 1);
+    }
+    return count;
+  }, [allSessions, today]);
+
   // ── Weekly frequency (last 8 weeks) ──────────────────────────────────────
   const weeklyFreq = useMemo(() => {
     const weeks: { label: string; sessions: number }[] = [];
@@ -94,10 +106,10 @@ export function OverviewSection({
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 mb-8 sm:grid-cols-4">
         {[
+          { label: "Streak", value: `${streak}`, sub: streak === 1 ? "day" : "days" },
           { label: "This week", value: `${thisWeekSessions.length}`, sub: "sessions" },
-          { label: "This week", value: `${thisWeekVolume > 0 ? (thisWeekVolume / 1000).toFixed(1) + "k" : "0"}`, sub: "lbs moved" },
           { label: "Total", value: `${totalSessions}`, sub: "sessions" },
-          { label: "Total", value: `${totalVolume > 0 ? (totalVolume / 1000).toFixed(0) + "k" : "0"}`, sub: "lbs moved" },
+          { label: "Total volume", value: `${totalVolume > 0 ? (totalVolume / 1000).toFixed(0) + "k" : "0"}`, sub: "lbs moved" },
         ].map((s, i) => (
           <div key={i} className="px-4 py-4 rounded-2xl"
             style={{ background: "rgba(200,144,10,0.06)", border: "1px solid rgba(200,144,10,0.15)" }}>
