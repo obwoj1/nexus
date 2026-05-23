@@ -249,3 +249,39 @@ Full conversation history is passed to Claude every turn (as `messages` array). 
 
 **What's next:**
 - Phase 6: Investments — US stocks + crypto, manual holdings, Finnhub/CoinGecko prices, portfolio view
+
+---
+
+## Session 12 (continued) — Phase 5: Workouts — full expansion + reliability (2026-05-23)
+
+**Goal:** Implement all 8 suggested improvements + fix silent server action failures.
+
+**Done:**
+- **Streak counter** (`OverviewSection.tsx`) — `useMemo` iterates backwards from `today`, checks session date Set, counts consecutive days. Replaces the old "Total sessions" stat card.
+- **1RM estimator** (`ProgressSection.tsx`) — Epley formula (`weight × (1 + reps/30)`) computed per set in `getExerciseProgressAction`. Max-weight chart gains a second dashed gold line for Est. 1RM. Personal bests grid is now 3 columns: Best Weight | Est. 1RM | Best Volume.
+- **History search** (`HistorySection.tsx`) — `search` state + `filtered` memo. Matches against session name AND any exercise name in `session_sets`. Search input at top of section.
+- **Duration tracking** (`LogSection.tsx`) — `elapsed` state (seconds) + `startedAtRef` + `setInterval` useEffect shows live "MM:SS" timer in session header. Finish button calls `updateSessionAction({ duration_minutes: Math.round(elapsed/60) || 1 })`.
+- **"Last time" reference** (`LogSection.tsx`) — builds `lastTimeSets` map (exerciseId → RecentSet[]) from the `recentSessions` prop already fetched on page load — zero extra DB queries. Each ExerciseBlock shows "Last: 3×185  3×185" row below the exercise name.
+- **PR detection** (`LogSection.tsx`) — after logging a set, compares `weightLbs` to `Math.max(...lastTimeSets[exerciseId].map(s => s.weight_lbs))`. Sets `newPRExercise` state for 4 seconds via `setTimeout`. ExerciseBlock renders gold "NEW PR" badge when `isPR` prop is true.
+- **Photo comparison** (`PhotosSection.tsx`) — "Compare" toggle button in header. `compareMode` state + `compareIds` array (max 2). Photos show numbered circle badge when selected. `AnimatePresence` side-by-side view renders below grid when exactly 2 are chosen.
+- **Body metrics** (`BodyMetricsSection.tsx`, new component) — daily log form (date, weight_lbs, body_fat_pct, notes). Optimistic state updates (filter+prepend). Latest snapshot 2-column card grid. Weight trend `LineChart` (only shown ≥2 weight data points). Chronological log table with trash button per entry.
+- **Custom exercises** (`LogSection.tsx`) — picker "no results" state → "Create [name] as custom exercise" button → inline form (muscle group, equipment, type selects). Calls `createCustomExerciseAction`, immediately prepends to exercise list and opens exercise in current session.
+- **WorkoutsShell** — expanded to 7 tabs: Overview | Log | History | Templates | Progress | Photos | Metrics.
+- **`workouts/page.tsx`** — `Promise.all` now fetches 7 things: exercises, custom_exercises, today's session, 90-day recent sessions, templates, body_photos (with server-signed URLs), body_metrics.
+- **All 9 server actions** wrapped in try/catch returning `{ error }` instead of throwing silently into `startTransition`.
+
+**Root cause: "Start Workout does nothing" bug:**
+- `AuthApiError: Invalid Refresh Token` → `getUserId()` threw → `startTransition` async callback rejected silently → UI had no feedback.
+- Fix: try/catch on all actions + `actionError` state in LogSection for user-visible banner.
+
+**New tables (run in Supabase SQL Editor):**
+- `custom_exercises` — user_id + name unique, muscle_group, equipment, type
+- `body_metrics` — user_id + date unique, weight_lbs, body_fat_pct, notes; upsert-safe
+
+**Architecture notes:**
+- "Last time" reference implemented with zero extra server round-trips by reusing the `recentSessions` prop.
+- `upsert` with `onConflict: "user_id,date"` makes daily body metric logging idempotent — same-day re-entry updates instead of errors.
+- Custom exercises stored in separate table from global `exercises` to avoid unique constraint conflicts with the 36 seeded exercises.
+
+**What's next:**
+- Phase 6: Investments — US stocks + crypto, manual holdings, Finnhub/CoinGecko prices, portfolio view

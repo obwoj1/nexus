@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Added — Phase 5: Workouts — full expansion (2026-05-23, Session 12 continued)
+- feat(workouts): streak counter — OverviewSection computes consecutive-day streak from combined session set
+- feat(workouts): 1RM estimator — ProgressSection adds dashed gold Est. 1RM line (Epley formula) to max-weight chart + 3-column personal bests grid
+- feat(workouts): history search — HistorySection filters sessions by name or any exercise in that session, live as you type
+- feat(workouts): duration tracking — LogSection starts a live elapsed timer on session start, Finish button writes duration_minutes to DB
+- feat(workouts): "Last time" reference — LogSection builds exerciseId→sets map from recentSessions prop, shows "Last: 3×185 3×185" below each exercise name, zero extra DB queries
+- feat(workouts): PR detection — LogSection compares new set weight to previous max; shows 4-second gold "NEW PR" badge on that exercise block
+- feat(workouts): photo comparison — PhotosSection compare mode lets you select 2 photos, renders side-by-side animated view via Framer Motion AnimatePresence
+- feat(workouts): body metrics log — BodyMetricsSection: daily weight+BF% log, latest snapshot cards, weight trend LineChart (≥2 points), chronological table with delete
+- feat(workouts): custom exercises — picker "no results" state shows inline form to create custom exercise (muscle group/equipment/type), immediately added to live session
+- feat(workouts): WorkoutsShell — 7-tab nav (Overview / Log / History / Templates / Progress / Photos / Metrics)
+- feat(workouts): page fetches custom_exercises + body_metrics, merges with global exercises
+- chore(db): custom_exercises table (user_id+name unique) with RLS
+- chore(db): body_metrics table (user_id+date unique, upsert-safe) with RLS
+- feat(workouts): server actions — upsertBodyMetricAction, deleteBodyMetricAction, createCustomExerciseAction
+
 ### Fixed — Workouts reliability (2026-05-23, Session 12 continued)
 - fix(workouts): wrap all server actions in try/catch — createSession, updateSession, deleteSession, addSet, updateSet, deleteSet, createTemplate, deleteTemplate, removeExerciseFromTemplate now return {error} instead of throwing silently
 - fix(workouts): surface createSession error in LogSection UI — red error banner below empty state
