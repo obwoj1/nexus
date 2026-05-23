@@ -1,24 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { Dumbbell, History, BookOpen, TrendingUp } from "lucide-react";
+import { Dumbbell, History, BookOpen, TrendingUp, BarChart2, Camera } from "lucide-react";
 import { LogSection } from "./LogSection";
 import { HistorySection } from "./HistorySection";
 import { TemplatesSection } from "./TemplatesSection";
 import { ProgressSection } from "./ProgressSection";
+import { OverviewSection } from "./OverviewSection";
+import { PhotosSection } from "./PhotosSection";
 
-type Section = "log" | "history" | "templates" | "progress";
+type Section = "overview" | "log" | "history" | "templates" | "progress" | "photos";
 
 const NAV: { key: Section; label: string; icon: React.ReactNode }[] = [
-  { key: "log",       label: "Log",       icon: <Dumbbell className="w-4 h-4" /> },
-  { key: "history",   label: "History",   icon: <History className="w-4 h-4" /> },
-  { key: "templates", label: "Templates", icon: <BookOpen className="w-4 h-4" /> },
-  { key: "progress",  label: "Progress",  icon: <TrendingUp className="w-4 h-4" /> },
+  { key: "overview",   label: "Overview",   icon: <BarChart2 className="w-4 h-4" /> },
+  { key: "log",        label: "Log",        icon: <Dumbbell className="w-4 h-4" /> },
+  { key: "history",    label: "History",    icon: <History className="w-4 h-4" /> },
+  { key: "templates",  label: "Templates",  icon: <BookOpen className="w-4 h-4" /> },
+  { key: "progress",   label: "Progress",   icon: <TrendingUp className="w-4 h-4" /> },
+  { key: "photos",     label: "Photos",     icon: <Camera className="w-4 h-4" /> },
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function WorkoutsShell(props: any) {
-  const [active, setActive] = useState<Section>("log");
+  const [active, setActive] = useState<Section>("overview");
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -53,10 +57,12 @@ export function WorkoutsShell(props: any) {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
+        {active === "overview"   && <OverviewSection  todaySession={props.todaySession} recentSessions={props.recentSessions} today={props.today} />}
         {active === "log"       && <LogSection       exercises={props.exercises} todaySession={props.todaySession} today={props.today} templates={props.templates} />}
         {active === "history"   && <HistorySection   sessions={props.recentSessions} />}
         {active === "templates" && <TemplatesSection templates={props.templates} exercises={props.exercises} />}
         {active === "progress"  && <ProgressSection  exercises={props.exercises} />}
+        {active === "photos"    && <PhotosSection    photos={props.photos} today={props.today} />}
       </div>
     </div>
   );
