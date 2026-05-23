@@ -6,7 +6,7 @@ import { deleteSessionAction } from "@/app/actions/workouts";
 
 interface Exercise { id: string; name: string; muscle_group: string; }
 interface SetRow { id: string; set_number: number; reps: number | null; weight_lbs: number | null; exercise_id: string; exercises: Exercise; }
-interface Session { id: string; name: string; date: string; duration_minutes: number | null; session_sets: SetRow[]; }
+interface Session { id: string; name: string; date: string; duration_minutes: number | null; notes?: string | null; session_sets: SetRow[]; }
 
 export function HistorySection({ sessions: initial }: { sessions: Session[] }) {
   const [sessions, setSessions] = useState(initial);
@@ -92,6 +92,9 @@ export function HistorySection({ sessions: initial }: { sessions: Session[] }) {
               {isOpen && (
                 <div className="px-4 pb-4 pt-2"
                   style={{ borderTop: "1px solid rgba(255,235,180,0.05)" }}>
+                  {session.notes && (
+                    <p className="text-xs mb-3 mt-1 italic" style={{ color: "rgba(245,240,232,0.45)" }}>{session.notes}</p>
+                  )}
                   {session.session_sets.length === 0 ? (
                     <p className="text-xs" style={{ color: "rgba(245,240,232,0.25)" }}>No sets logged</p>
                   ) : (
