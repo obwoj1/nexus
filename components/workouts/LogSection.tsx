@@ -79,7 +79,7 @@ export function LogSection({
     startTransition(async () => {
       const res = await createSessionAction(name, today, templateId);
       if ("error" in res) return;
-      setSession({ id: res.id, name, date: today, duration_minutes: null, sets: [] });
+      setSession({ id: res.id, name, date: today, duration_minutes: null, notes: null, sets: [] });
       if (templateId) {
         const tmpl = templates.find((t) => t.id === templateId);
         if (tmpl) {
@@ -258,7 +258,7 @@ export function LogSection({
         placeholder="Session notes…"
         rows={2}
         className="w-full bg-transparent text-sm outline-none resize-none mb-6 px-3 py-2.5 rounded-xl"
-        style={{ color: "rgba(245,240,232,0.7)", border: "1px solid rgba(255,235,180,0.08)", placeholder: "rgba(245,240,232,0.25)" }}
+        style={{ color: "rgba(245,240,232,0.7)", border: "1px solid rgba(255,235,180,0.08)" }}
       />
 
       {/* Exercise blocks */}
