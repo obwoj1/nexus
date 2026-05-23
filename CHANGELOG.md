@@ -10,7 +10,9 @@
 - feat(workouts): LogSection — start workout (blank or from template), exercise picker grouped by muscle, inline set logging (reps + lbs), delete sets/exercises, rename session
 - feat(workouts): HistorySection — last 20 sessions, expandable to show all exercises + set chips with volume total
 - feat(workouts): server actions — createSession, updateSession, deleteSession, addSet, updateSet, deleteSet, createTemplate, deleteTemplate, removeExerciseFromTemplate, getExerciseProgress
-- **TODO next session:** TemplatesSection, ProgressSection, enable Workouts sidebar nav item
+- feat(workouts): TemplatesSection — create/manage workout plans, ordered exercise list, remove individual exercises
+- feat(workouts): ProgressSection — exercise search dropdown, max weight line chart, total volume line chart, personal bests cards
+- feat(sidebar): Workouts nav item enabled (live: true)
 
 ### Added — Phase 4: Charts (2026-05-21, Session 10)
 - feat(tracking): HabitsSection — 30-day completion bar chart, each bar colored to habit's color

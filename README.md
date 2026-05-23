@@ -20,8 +20,7 @@ Next.js 15 · TypeScript · Tailwind v4 · shadcn/ui · Supabase · Vercel · An
 | 4 | Tracking — Habits, Subscriptions, Goals, Reading, Health, Dates | ✅ Live |
 | 4 | Tracking charts — recharts per section | ✅ Live |
 | 4 | Claudia AI — live data access, interactive chat, sessionStorage | ✅ Live |
-| 5 | Workouts — Log, History (partial) | 🔨 In progress |
-| 5 | Workouts — Templates, Progress charts | ⏳ Next session |
+| 5 | Workouts — Log, History, Templates, Progress charts | ✅ Live |
 | 6 | Investments | 📋 Planned |
 
 ## Setup

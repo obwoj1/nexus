@@ -215,10 +215,10 @@ Full conversation history is passed to Claude every turn (as `messages` array). 
 - `LogSection.tsx`: most complex component. State: `SessionState` (sets flat array) + `pendingExercises` (added to UI but no sets yet). Exercise picker dropdown grouped by muscle, searchable. Each exercise shows set rows + input row (reps + lbs + Log button). Enter key submits. Optimistic updates — set appears immediately, server action fires in background.
 - `HistorySection.tsx`: expandable session cards. Derives exercise groups client-side from flat `session_sets` array. Shows total volume, unique exercise count.
 
-**Stopped mid-session — still needed:**
-- `TemplatesSection.tsx` — create/manage saved workout plans
-- `ProgressSection.tsx` — exercise selector + max weight + volume line charts (recharts)
-- Enable Workouts in `Sidebar.tsx` (`live: true`)
+**Completed next session (2026-05-23):**
+- `TemplatesSection.tsx` — create template with name + ordered exercise list (searchable picker), delete template, remove individual exercise tags
+- `ProgressSection.tsx` — search input with live dropdown, calls `getExerciseProgressAction` on select, renders max weight line chart + volume line chart + personal bests stat cards
+- Sidebar Workouts `live: true` — Phase 5 fully live
 
 **Architecture notes:**
 - Sets are the source of truth. An exercise "exists" in a session only if it has ≥1 set OR is in `pendingExercises` state. No exercise-level records needed.
