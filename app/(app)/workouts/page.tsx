@@ -13,7 +13,12 @@ export default async function WorkoutsPage() {
   const tz = cookieStore.get("nexus-tz")?.value ?? "America/New_York";
   const today = new Date().toLocaleDateString("en-CA", { timeZone: tz });
 
-  const [exercisesRes, todaySessionRes, recentSessionsRes, templatesRes] = await Promise.all([
+  const ninetyDaysAgo = (() => {
+    const d = new Date(today); d.setDate(d.getDate() - 90);
+    return d.toISOString().split("T")[0];
+  })();
+
+  const [exercisesRes, todaySessionRes, recentSessionsRes, templatesRes, rawPhotos] = await Promise.all([
     admin.from("exercises").select("*").order("muscle_group").order("name"),
     admin
       .from("workout_sessions")
@@ -30,8 +35,8 @@ export default async function WorkoutsPage() {
           exercises(id, name, muscle_group))`)
       .eq("user_id", user.id)
       .neq("date", today)
-      .order("date", { ascending: false })
-      .limit(20),
+      .gte("date", ninetyDaysAgo)
+      .order("date", { ascending: false }),
     admin
       .from("workout_templates")
       .select(`id, name,
@@ -39,7 +44,24 @@ export default async function WorkoutsPage() {
           exercises(id, name, muscle_group, equipment, type))`)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
+    admin
+      .from("body_photos")
+      .select("id, storage_path, date, notes")
+      .eq("user_id", user.id)
+      .order("date", { ascending: false }),
   ]);
+
+  // Generate signed URLs for photos (1-hour validity)
+  const photos = rawPhotos.data?.length
+    ? await Promise.all(
+        rawPhotos.data.map(async (p) => {
+          const { data } = await admin.storage
+            .from("body-progress")
+            .createSignedUrl(p.storage_path, 3600);
+          return { ...p, url: data?.signedUrl ?? "" };
+        }),
+      )
+    : [];
 
   return (
     <WorkoutsShell
@@ -47,6 +69,7 @@ export default async function WorkoutsPage() {
       todaySession={todaySessionRes.data ?? null}
       recentSessions={recentSessionsRes.data ?? []}
       templates={templatesRes.data ?? []}
+      photos={photos}
       today={today}
     />
   );
