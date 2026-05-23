@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 async function getUserId() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new Error("Session expired — please refresh the page");
   return user.id;
 }
 
@@ -15,15 +15,19 @@ const db = () => createAdminClient();
 // ── SESSIONS ──────────────────────────────────────────────────────────────────
 
 export async function createSessionAction(name: string, date: string, templateId?: string) {
-  const userId = await getUserId();
-  const { data, error } = await db()
-    .from("workout_sessions")
-    .insert({ user_id: userId, name, date, template_id: templateId ?? null })
-    .select("id")
-    .single();
-  if (error) return { error: error.message };
-  revalidatePath("/workouts");
-  return { id: data.id as string };
+  try {
+    const userId = await getUserId();
+    const { data, error } = await db()
+      .from("workout_sessions")
+      .insert({ user_id: userId, name, date, template_id: templateId ?? null })
+      .select("id")
+      .single();
+    if (error) return { error: error.message };
+    revalidatePath("/workouts");
+    return { id: data.id as string };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Failed to create session" };
+  }
 }
 
 export async function updateSessionAction(

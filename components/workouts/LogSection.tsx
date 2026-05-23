@@ -75,10 +75,13 @@ export function LogSection({
   const todayLabel = new Date(today + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   const weekday = new Date(today + "T12:00:00").toLocaleDateString("en-US", { weekday: "long" });
 
+  const [actionError, setActionError] = useState<string | null>(null);
+
   function startWorkout(name: string, templateId?: string) {
+    setActionError(null);
     startTransition(async () => {
       const res = await createSessionAction(name, today, templateId);
-      if ("error" in res) return;
+      if ("error" in res) { setActionError(res.error ?? "Unknown error"); return; }
       setSession({ id: res.id, name, date: today, duration_minutes: null, notes: null, sets: [] });
       if (templateId) {
         const tmpl = templates.find((t) => t.id === templateId);
@@ -170,6 +173,11 @@ export function LogSection({
         <div className="flex flex-col items-center justify-center py-24 gap-5">
           <Dumbbell className="w-10 h-10" style={{ color: "rgba(245,240,232,0.08)" }} />
           <p className="text-sm" style={{ color: "rgba(245,240,232,0.3)" }}>No workout logged yet today</p>
+          {actionError && (
+            <p className="text-xs px-3 py-1.5 rounded-lg" style={{ color: "#F87171", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)" }}>
+              {actionError}
+            </p>
+          )}
           <div className="flex items-center gap-3">
             <button
               onClick={() => startWorkout(`${weekday} Workout`)}
