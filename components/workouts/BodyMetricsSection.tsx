@@ -33,7 +33,7 @@ export function BodyMetricsSection({ metrics: initial, today }: { metrics: Metri
       return [optimistic, ...filtered];
     });
     setShowForm(false); setWeight(""); setBodyFat(""); setNotes(""); setDate(today);
-    startTransition(() => upsertBodyMetricAction(date, w, bf, notes || null));
+    startTransition(() => { void upsertBodyMetricAction(date, w, bf, notes || null); });
   }
 
   function handleDelete(metric: Metric) {

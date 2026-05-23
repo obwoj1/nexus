@@ -18,7 +18,7 @@ export default async function WorkoutsPage() {
     return d.toISOString().split("T")[0];
   })();
 
-  const [exercisesRes, customExercisesRes, todaySessionRes, recentSessionsRes, templatesRes, rawPhotos] = await Promise.all([
+  const [exercisesRes, customExercisesRes, todaySessionRes, recentSessionsRes, templatesRes, rawPhotos, bodyMetricsRes] = await Promise.all([
     admin.from("exercises").select("*").order("muscle_group").order("name"),
     admin.from("custom_exercises").select("*").eq("user_id", user.id).order("name"),
     admin
@@ -50,6 +50,11 @@ export default async function WorkoutsPage() {
       .select("id, storage_path, date, notes")
       .eq("user_id", user.id)
       .order("date", { ascending: false }),
+    admin
+      .from("body_metrics")
+      .select("id, date, weight_lbs, body_fat_pct, notes")
+      .eq("user_id", user.id)
+      .order("date", { ascending: false }),
   ]);
 
   // Generate signed URLs for photos (1-hour validity)
@@ -76,6 +81,7 @@ export default async function WorkoutsPage() {
       recentSessions={recentSessionsRes.data ?? []}
       templates={templatesRes.data ?? []}
       photos={photos}
+      bodyMetrics={bodyMetricsRes.data ?? []}
       today={today}
     />
   );
