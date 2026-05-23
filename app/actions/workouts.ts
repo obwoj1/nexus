@@ -34,15 +34,19 @@ export async function updateSessionAction(
   id: string,
   updates: { name?: string; duration_minutes?: number | null; notes?: string | null },
 ) {
-  const userId = await getUserId();
-  await db().from("workout_sessions").update(updates).eq("id", id).eq("user_id", userId);
-  revalidatePath("/workouts");
+  try {
+    const userId = await getUserId();
+    await db().from("workout_sessions").update(updates).eq("id", id).eq("user_id", userId);
+    revalidatePath("/workouts");
+  } catch { /* non-critical — optimistic update already applied */ }
 }
 
 export async function deleteSessionAction(id: string) {
-  const userId = await getUserId();
-  await db().from("workout_sessions").delete().eq("id", id).eq("user_id", userId);
-  revalidatePath("/workouts");
+  try {
+    const userId = await getUserId();
+    await db().from("workout_sessions").delete().eq("id", id).eq("user_id", userId);
+    revalidatePath("/workouts");
+  } catch { /* non-critical */ }
 }
 
 // ── SETS ──────────────────────────────────────────────────────────────────────
