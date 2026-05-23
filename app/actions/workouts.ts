@@ -242,6 +242,30 @@ export async function refreshPhotoUrlAction(storagePath: string): Promise<string
   return data?.signedUrl ?? "";
 }
 
+// ── BODY METRICS ─────────────────────────────────────────────────────────────
+
+export async function upsertBodyMetricAction(date: string, weightLbs: number | null, bodyFatPct: number | null, notes: string | null) {
+  try {
+    const userId = await getUserId();
+    const { error } = await db()
+      .from("body_metrics")
+      .upsert({ user_id: userId, date, weight_lbs: weightLbs, body_fat_pct: bodyFatPct, notes }, { onConflict: "user_id,date" });
+    if (error) return { error: error.message };
+    revalidatePath("/workouts");
+    return { ok: true };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Failed to save" };
+  }
+}
+
+export async function deleteBodyMetricAction(id: string) {
+  try {
+    const userId = await getUserId();
+    await db().from("body_metrics").delete().eq("id", id).eq("user_id", userId);
+    revalidatePath("/workouts");
+  } catch { /* non-critical */ }
+}
+
 // ── CUSTOM EXERCISES ──────────────────────────────────────────────────────────
 
 export async function createCustomExerciseAction(
