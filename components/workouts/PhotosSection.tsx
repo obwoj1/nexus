@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useRef } from "react";
-import { Plus, Trash2, Camera, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Camera, X, ChevronLeft, ChevronRight, Columns2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { uploadBodyPhotoAction, deleteBodyPhotoAction } from "@/app/actions/workouts";
 
@@ -16,7 +16,15 @@ export function PhotosSection({ photos: initial, today }: { photos: Photo[]; tod
   const [uploadNotes, setUploadNotes] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  function toggleCompare(id: string) {
+    setCompareIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : prev.length < 2 ? [...prev, id] : prev
+    );
+  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -59,12 +67,22 @@ export function PhotosSection({ photos: initial, today }: { photos: Photo[]; tod
             {photos.length} photo{photos.length !== 1 ? "s" : ""} · visual progress over time
           </p>
         </div>
-        <button
-          onClick={() => fileRef.current?.click()}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium"
-          style={{ background: "rgba(200,144,10,0.12)", border: "1px solid rgba(200,144,10,0.3)", color: "#C8900A" }}>
-          <Plus className="w-3.5 h-3.5" /> Add Photo
-        </button>
+        <div className="flex items-center gap-2">
+          {photos.length >= 2 && (
+            <button
+              onClick={() => { setCompareMode((v) => !v); setCompareIds([]); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
+              style={{ background: compareMode ? "rgba(96,165,250,0.15)" : "rgba(255,255,255,0.04)", border: `1px solid ${compareMode ? "rgba(96,165,250,0.35)" : "rgba(255,235,180,0.1)"}`, color: compareMode ? "#60A5FA" : "rgba(245,240,232,0.5)" }}>
+              <Columns2 className="w-3.5 h-3.5" /> {compareMode ? "Cancel" : "Compare"}
+            </button>
+          )}
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium"
+            style={{ background: "rgba(200,144,10,0.12)", border: "1px solid rgba(200,144,10,0.3)", color: "#C8900A" }}>
+            <Plus className="w-3.5 h-3.5" /> Add Photo
+          </button>
+        </div>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
       </div>
 
@@ -121,30 +139,80 @@ export function PhotosSection({ photos: initial, today }: { photos: Photo[]; tod
       )}
 
       {/* Photo grid */}
+      {/* Compare hint */}
+      {compareMode && (
+        <p className="text-xs mb-4" style={{ color: "rgba(96,165,250,0.7)" }}>
+          {compareIds.length === 0 ? "Select 2 photos to compare" : compareIds.length === 1 ? "Select one more photo" : ""}
+        </p>
+      )}
+
       {photos.length > 0 && (
         <div className="grid grid-cols-3 gap-3">
-          {photos.map((photo, i) => (
-            <button key={photo.id} onClick={() => setLightbox(i)}
-              className="group relative aspect-square rounded-2xl overflow-hidden transition-transform hover:scale-[1.02]"
-              style={{ border: "1px solid rgba(255,235,180,0.07)" }}>
-              {photo.url ? (
-                <img src={photo.url} alt={photo.notes ?? photo.date} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.03)" }}>
-                  <Camera className="w-6 h-6" style={{ color: "rgba(245,240,232,0.2)" }} />
+          {photos.map((photo, i) => {
+            const isSelected = compareIds.includes(photo.id);
+            return (
+              <button key={photo.id}
+                onClick={() => compareMode ? toggleCompare(photo.id) : setLightbox(i)}
+                className="group relative aspect-square rounded-2xl overflow-hidden transition-transform hover:scale-[1.02]"
+                style={{ border: `1px solid ${isSelected ? "rgba(96,165,250,0.5)" : "rgba(255,235,180,0.07)"}`, outline: isSelected ? "2px solid rgba(96,165,250,0.4)" : "none" }}>
+                {photo.url ? (
+                  <img src={photo.url} alt={photo.notes ?? photo.date} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.03)" }}>
+                    <Camera className="w-6 h-6" style={{ color: "rgba(245,240,232,0.2)" }} />
+                  </div>
+                )}
+                {compareMode && isSelected && (
+                  <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center"
+                    style={{ background: "#60A5FA" }}>
+                    <span className="text-[9px] font-bold text-white">{compareIds.indexOf(photo.id) + 1}</span>
+                  </div>
+                )}
+                <div className="absolute bottom-0 left-0 right-0 px-3 py-2"
+                  style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.7))" }}>
+                  <p className="text-[10px] font-medium" style={{ color: "rgba(245,240,232,0.8)" }}>
+                    {new Date(photo.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </p>
                 </div>
-              )}
-              {/* Date overlay */}
-              <div className="absolute bottom-0 left-0 right-0 px-3 py-2"
-                style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.7))" }}>
-                <p className="text-[10px] font-medium" style={{ color: "rgba(245,240,232,0.8)" }}>
-                  {new Date(photo.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                </p>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       )}
+
+      {/* Side-by-side comparison view */}
+      <AnimatePresence>
+        {compareMode && compareIds.length === 2 && (() => {
+          const [a, b] = compareIds.map((id) => photos.find((p) => p.id === id)!);
+          return (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+              className="mt-6 rounded-2xl overflow-hidden"
+              style={{ border: "1px solid rgba(96,165,250,0.2)", background: "rgba(96,165,250,0.04)" }}>
+              <div className="flex items-center justify-between px-4 py-3"
+                style={{ borderBottom: "1px solid rgba(96,165,250,0.1)" }}>
+                <p className="text-xs font-medium" style={{ color: "rgba(96,165,250,0.8)" }}>Side-by-side comparison</p>
+                <button onClick={() => { setCompareIds([]); setCompareMode(false); }}>
+                  <X className="w-4 h-4" style={{ color: "rgba(245,240,232,0.35)" }} />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-px" style={{ background: "rgba(96,165,250,0.1)" }}>
+                {[a, b].map((photo) => (
+                  <div key={photo.id} className="relative">
+                    <img src={photo.url} alt={photo.notes ?? photo.date} className="w-full object-cover" style={{ maxHeight: "60vh" }} />
+                    <div className="absolute bottom-0 left-0 right-0 px-3 py-2"
+                      style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.8))" }}>
+                      <p className="text-xs font-medium" style={{ color: "#F5F0E8" }}>
+                        {new Date(photo.date + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                      </p>
+                      {photo.notes && <p className="text-[10px] mt-0.5" style={{ color: "rgba(245,240,232,0.5)" }}>{photo.notes}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
 
       {/* Lightbox */}
       <AnimatePresence>
