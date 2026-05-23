@@ -149,7 +149,7 @@ export async function removeExerciseFromTemplateAction(id: string) {
 
 export async function getExerciseProgressAction(
   exerciseId: string,
-): Promise<{ date: string; maxWeight: number; totalVolume: number }[]> {
+): Promise<{ date: string; maxWeight: number; totalVolume: number; est1RM: number }[]> {
   const userId = await getUserId();
 
   const { data: sessions } = await db()
@@ -171,21 +171,25 @@ export async function getExerciseProgressAction(
 
   if (!sets?.length) return [];
 
-  const byDate: Record<string, { maxWeight: number; totalVolume: number }> = {};
+  const byDate: Record<string, { maxWeight: number; totalVolume: number; est1RM: number }> = {};
   sets.forEach((set) => {
     const date = dateById[set.session_id];
     if (!date) return;
     const w = Number(set.weight_lbs ?? 0);
     const r = Number(set.reps ?? 0);
-    if (!byDate[date]) byDate[date] = { maxWeight: 0, totalVolume: 0 };
+    if (!byDate[date]) byDate[date] = { maxWeight: 0, totalVolume: 0, est1RM: 0 };
     if (w > byDate[date].maxWeight) byDate[date].maxWeight = w;
     byDate[date].totalVolume += w * r;
+    // Epley formula: weight × (1 + reps/30), capped at 1 rep = just the weight
+    const epley = r <= 1 ? w : Math.round(w * (1 + r / 30));
+    if (epley > byDate[date].est1RM) byDate[date].est1RM = epley;
   });
 
   return Object.entries(byDate).map(([date, stats]) => ({
     date: new Date(date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }),
     maxWeight: stats.maxWeight,
     totalVolume: stats.totalVolume,
+    est1RM: stats.est1RM,
   }));
 }
 
