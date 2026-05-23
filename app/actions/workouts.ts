@@ -164,3 +164,52 @@ export async function getExerciseProgressAction(
     totalVolume: stats.totalVolume,
   }));
 }
+
+// ── BODY PHOTOS ───────────────────────────────────────────────────────────────
+
+export async function uploadBodyPhotoAction(formData: FormData) {
+  const userId = await getUserId();
+  const file = formData.get("file") as File | null;
+  const date = formData.get("date") as string | null;
+  const notes = (formData.get("notes") as string) || null;
+
+  if (!file || !date) return { error: "Missing file or date" };
+
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+  const path = `${userId}/${date}-${Date.now()}.${ext}`;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+
+  const { error: uploadError } = await db().storage
+    .from("body-progress")
+    .upload(path, bytes, { contentType: file.type, upsert: false });
+  if (uploadError) return { error: uploadError.message };
+
+  const { data: signed } = await db().storage
+    .from("body-progress")
+    .createSignedUrl(path, 3600);
+
+  const { data, error } = await db()
+    .from("body_photos")
+    .insert({ user_id: userId, storage_path: path, date, notes })
+    .select("id")
+    .single();
+  if (error) return { error: error.message };
+
+  return { id: data.id as string, url: signed?.signedUrl ?? "" };
+}
+
+export async function deleteBodyPhotoAction(id: string, storagePath: string) {
+  const userId = await getUserId();
+  const { data } = await db().from("body_photos").select("user_id").eq("id", id).single();
+  if ((data as { user_id: string } | null)?.user_id !== userId) return;
+  await db().storage.from("body-progress").remove([storagePath]);
+  await db().from("body_photos").delete().eq("id", id);
+  revalidatePath("/workouts");
+}
+
+export async function refreshPhotoUrlAction(storagePath: string): Promise<string> {
+  const { data } = await db().storage
+    .from("body-progress")
+    .createSignedUrl(storagePath, 3600);
+  return data?.signedUrl ?? "";
+}
