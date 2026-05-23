@@ -9,7 +9,7 @@ import {
 
 interface Exercise { id: string; name: string; muscle_group: string; equipment: string; type: string; }
 interface SetItem { id: string; set_number: number; reps: number | null; weight_lbs: number | null; exercise_id: string; exercise: Exercise; }
-interface SessionState { id: string; name: string; date: string; duration_minutes: number | null; sets: SetItem[]; }
+interface SessionState { id: string; name: string; date: string; duration_minutes: number | null; notes: string | null; sets: SetItem[]; }
 interface Template { id: string; name: string; template_exercises: { exercise_id: string; display_order: number; exercises: Exercise }[]; }
 
 function groupByExercise(sets: SetItem[]) {
@@ -37,6 +37,7 @@ export function LogSection({
       name: initialSession.name,
       date: initialSession.date,
       duration_minutes: initialSession.duration_minutes,
+      notes: initialSession.notes ?? null,
       sets: (initialSession.session_sets ?? []).map((s: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
         id: s.id, set_number: s.set_number, reps: s.reps,
         weight_lbs: s.weight_lbs, exercise_id: s.exercise_id, exercise: s.exercises,
@@ -46,6 +47,7 @@ export function LogSection({
 
   const [pendingExercises, setPendingExercises] = useState<Exercise[]>([]);
   const [draftSets, setDraftSets] = useState<Record<string, { reps: string; weight: string }>>({});
+  const [notesValue, setNotesValue] = useState(initialSession?.notes ?? "");
   const [showPicker, setShowPicker] = useState(false);
   const [pickerSearch, setPickerSearch] = useState("");
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
@@ -138,6 +140,12 @@ export function LogSection({
     setSession((prev) => prev ? { ...prev, name: editedName.trim() } : prev);
     setNameEdit(false);
     startTransition(() => updateSessionAction(session.id, { name: editedName.trim() }));
+  }
+
+  function saveNotes() {
+    if (!session) return;
+    const notes = notesValue.trim() || null;
+    startTransition(() => updateSessionAction(session.id, { notes }));
   }
 
   function removeSession() {
@@ -241,6 +249,17 @@ export function LogSection({
           </>
         )}
       </div>
+
+      {/* Session notes */}
+      <textarea
+        value={notesValue}
+        onChange={(e) => setNotesValue(e.target.value)}
+        onBlur={saveNotes}
+        placeholder="Session notes…"
+        rows={2}
+        className="w-full bg-transparent text-sm outline-none resize-none mb-6 px-3 py-2.5 rounded-xl"
+        style={{ color: "rgba(245,240,232,0.7)", border: "1px solid rgba(255,235,180,0.08)", placeholder: "rgba(245,240,232,0.25)" }}
+      />
 
       {/* Exercise blocks */}
       <div className="flex flex-col gap-4">
