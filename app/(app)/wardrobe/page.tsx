@@ -12,7 +12,7 @@ export default async function WardrobePage() {
   const [itemsRes, outfitsRes] = await Promise.all([
     admin
       .from("wardrobe_items")
-      .select("id, storage_path, category, color, description, brand, created_at")
+      .select("id, storage_path, category, color, description, brand, analyzed, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
     admin
