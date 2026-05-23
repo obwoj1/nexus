@@ -3,10 +3,10 @@
 import { useState, useTransition } from "react";
 import { TrendingUp } from "lucide-react";
 import { getExerciseProgressAction } from "@/app/actions/workouts";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 interface Exercise { id: string; name: string; muscle_group: string; equipment: string; type: string; }
-interface ProgressPoint { date: string; maxWeight: number; totalVolume: number; }
+interface ProgressPoint { date: string; maxWeight: number; totalVolume: number; est1RM: number; }
 
 export function ProgressSection({ exercises }: { exercises: Exercise[] }) {
   const [search, setSearch] = useState("");
@@ -103,16 +103,18 @@ export function ProgressSection({ exercises }: { exercises: Exercise[] }) {
           {/* Max weight */}
           <div className="p-5 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,235,180,0.06)" }}>
             <p className="text-[10px] uppercase tracking-widest mb-4" style={{ color: "rgba(200,144,10,0.6)" }}>
-              Max weight per session (lbs)
+              Max weight + est. 1RM per session (lbs)
             </p>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={progressData} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,235,180,0.06)" vertical={false} />
                 <XAxis dataKey="date" tick={{ fill: "rgba(245,240,232,0.4)", fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: "rgba(245,240,232,0.4)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip {...tooltipStyle} formatter={(v) => [`${v} lbs`, "Max weight"]} />
+                <Tooltip {...tooltipStyle} formatter={(v, name) => [`${v} lbs`, name === "maxWeight" ? "Max weight" : "Est. 1RM"]} />
                 <Line type="monotone" dataKey="maxWeight" stroke="#C8900A" strokeWidth={2.5}
                   dot={{ fill: "#C8900A", r: 4, strokeWidth: 0 }} activeDot={{ r: 6, fill: "#F5CE58" }} />
+                <Line type="monotone" dataKey="est1RM" stroke="#F5CE58" strokeWidth={1.5} strokeDasharray="4 3"
+                  dot={false} activeDot={{ r: 4, fill: "#F5CE58" }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -135,15 +137,17 @@ export function ProgressSection({ exercises }: { exercises: Exercise[] }) {
           </div>
 
           {/* Personal bests */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             {[
               { label: "Best weight", value: `${Math.max(...progressData.map((d) => d.maxWeight))} lbs` },
+              { label: "Est. 1RM", value: `${Math.max(...progressData.map((d) => d.est1RM))} lbs`, gold: true },
               { label: "Best volume", value: `${Math.max(...progressData.map((d) => d.totalVolume)).toLocaleString()} lbs` },
             ].map((stat) => (
               <div key={stat.label} className="px-5 py-4 rounded-2xl"
-                style={{ background: "rgba(200,144,10,0.06)", border: "1px solid rgba(200,144,10,0.15)" }}>
+                style={{ background: stat.gold ? "rgba(200,144,10,0.1)" : "rgba(200,144,10,0.06)", border: `1px solid rgba(200,144,10,${stat.gold ? "0.3" : "0.15"})` }}>
                 <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(200,144,10,0.6)" }}>{stat.label}</p>
                 <p className="text-xl font-semibold" style={{ color: "#F5F0E8" }}>{stat.value}</p>
+                {stat.gold && <p className="text-[9px] mt-0.5" style={{ color: "rgba(200,144,10,0.5)" }}>Epley formula</p>}
               </div>
             ))}
           </div>
