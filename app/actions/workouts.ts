@@ -237,3 +237,26 @@ export async function refreshPhotoUrlAction(storagePath: string): Promise<string
     .createSignedUrl(storagePath, 3600);
   return data?.signedUrl ?? "";
 }
+
+// ── CUSTOM EXERCISES ──────────────────────────────────────────────────────────
+
+export async function createCustomExerciseAction(
+  name: string,
+  muscleGroup: string,
+  equipment: string,
+  type: string,
+) {
+  try {
+    const userId = await getUserId();
+    const { data, error } = await db()
+      .from("custom_exercises")
+      .insert({ user_id: userId, name: name.trim(), muscle_group: muscleGroup, equipment, type })
+      .select("id")
+      .single();
+    if (error) return { error: error.message };
+    revalidatePath("/workouts");
+    return { id: data.id as string };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Failed to create exercise" };
+  }
+}
