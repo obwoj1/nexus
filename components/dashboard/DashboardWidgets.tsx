@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Calendar, Mail, TrendingUp, Flame, StickyNote, Clock, AlertCircle } from "lucide-react";
+import { Calendar, Mail, Dumbbell, Shirt, FileText, Activity, Clock, AlertCircle } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -32,14 +32,12 @@ function IconBox({ children }: { children: React.ReactNode }) {
   );
 }
 
-function PhaseTag({ label }: { label: string }) {
-  return (
-    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-      style={{ background: "rgba(200,144,10,0.1)", color: "rgba(200,144,10,0.7)", border: "1px solid rgba(200,144,10,0.2)" }}>
-      {label}
-    </span>
-  );
-}
+const liveCards = [
+  { icon: Activity,  label: "TRACKING",  sub: "Habits, goals & health", href: "/tracking" },
+  { icon: Dumbbell,  label: "WORKOUTS",  sub: "Sessions & progress",    href: "/workouts" },
+  { icon: Shirt,     label: "WARDROBE",  sub: "Fits & clothing",        href: "/wardrobe" },
+  { icon: FileText,  label: "NOTES",     sub: "Journal & notes",        href: "/notes"    },
+];
 
 function GreetingSection({ name }: { name?: string }) {
   const [time, setTime] = useState("");
@@ -184,11 +182,6 @@ function InboxWidget({ stats }: { stats: InboxStats | null }) {
   );
 }
 
-const staticCards = [
-  { icon: TrendingUp, label: "PORTFOLIO", value: "—", sub: "Investments not set up yet", badge: "Phase 6" },
-  { icon: Flame,      label: "HABITS",    value: "—", sub: "Tracking not set up yet",    badge: "Phase 4" },
-  { icon: StickyNote, label: "NOTES",     value: "—", sub: "Notes not set up yet",        badge: "Phase 3" },
-];
 
 interface Props {
   name?: string;
@@ -198,42 +191,44 @@ interface Props {
 
 export function DashboardWidgets({ name, todayEvents, inboxStats }: Props) {
   return (
-    <div className="grid grid-cols-3 gap-4 max-w-5xl">
-      <GreetingSection name={name} />
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 max-w-5xl">
+      {/* Greeting — full width on mobile, col-span-2 on desktop */}
+      <div className="col-span-2 md:col-span-1">
+        <GreetingSection name={name} />
+      </div>
 
-      {/* Live: Calendar */}
+      {/* Calendar */}
       <motion.div variants={card} initial="hidden" animate="visible" custom={1}>
-        <Link href="/calendar" className="block rounded-2xl p-5 transition-all duration-200 hover:border-[rgba(200,144,10,0.25)] hover:-translate-y-0.5"
+        <Link href="/calendar" className="block rounded-2xl p-4 md:p-5 h-full transition-all duration-200 hover:border-[rgba(200,144,10,0.25)] hover:-translate-y-0.5"
           style={surface}>
           <CalendarWidget events={todayEvents} />
         </Link>
       </motion.div>
 
-      {/* Live: Inbox */}
+      {/* Inbox */}
       <motion.div variants={card} initial="hidden" animate="visible" custom={2}>
-        <Link href="/mail" className="block rounded-2xl p-5 transition-all duration-200 hover:border-[rgba(200,144,10,0.25)] hover:-translate-y-0.5"
+        <Link href="/mail" className="block rounded-2xl p-4 md:p-5 h-full transition-all duration-200 hover:border-[rgba(200,144,10,0.25)] hover:-translate-y-0.5"
           style={surface}>
           <InboxWidget stats={inboxStats} />
         </Link>
       </motion.div>
 
       {/* AI Priority Inbox — full width */}
-      <div className="col-span-3">
+      <div className="col-span-2 md:col-span-3">
         <PriorityCard />
       </div>
 
-      {/* Placeholders */}
-      {staticCards.map((c, i) => (
-        <motion.div key={c.label} variants={card} initial="hidden" animate="visible" custom={i + 3}
-          className="rounded-2xl p-5 hover:border-[rgba(200,144,10,0.2)] transition-colors duration-200"
-          style={surface}>
-          <div className="flex items-start justify-between mb-4">
-            <IconBox><c.icon className="w-4 h-4" style={{ color: "#C8900A" }} /></IconBox>
-            <PhaseTag label={c.badge} />
-          </div>
-          <p className="text-xs tracking-widest uppercase mb-1.5" style={{ color: "rgba(245,240,232,0.4)" }}>{c.label}</p>
-          <p className="text-xl font-semibold" style={{ color: "rgba(245,240,232,0.2)" }}>{c.value}</p>
-          <p className="text-xs mt-1" style={{ color: "rgba(245,240,232,0.25)" }}>{c.sub}</p>
+      {/* Live feature shortcuts */}
+      {liveCards.map((c, i) => (
+        <motion.div key={c.label} variants={card} initial="hidden" animate="visible" custom={i + 3}>
+          <Link href={c.href} className="block rounded-2xl p-4 md:p-5 h-full transition-all duration-200 hover:border-[rgba(200,144,10,0.2)] hover:-translate-y-0.5"
+            style={surface}>
+            <div className="flex items-start justify-between mb-3">
+              <IconBox><c.icon className="w-4 h-4" style={{ color: "#C8900A" }} /></IconBox>
+            </div>
+            <p className="text-[10px] tracking-widest uppercase mb-1" style={{ color: "rgba(245,240,232,0.4)" }}>{c.label}</p>
+            <p className="text-xs mt-1" style={{ color: "rgba(245,240,232,0.35)" }}>{c.sub}</p>
+          </Link>
         </motion.div>
       ))}
     </div>
