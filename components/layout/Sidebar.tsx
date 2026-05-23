@@ -21,7 +21,7 @@ const navItems = [
   { icon: Mail,            label: "Mail",      href: "/mail",      live: true },
   { icon: FileText,        label: "Notes",     href: "/notes",     live: true },
   { icon: Activity,        label: "Tracking",  href: "/tracking",  live: true },
-  { icon: Dumbbell,        label: "Workouts",  href: "/workouts",  live: false },
+  { icon: Dumbbell,        label: "Workouts",  href: "/workouts",  live: true },
   { icon: TrendingUp,      label: "Investments", href: "/investments", live: false },
 ];
 
