@@ -65,6 +65,7 @@ export function LogSection({
   const [isPending, startTransition] = useTransition();
   const [elapsed, setElapsed] = useState(0); // seconds since session start
   const startedAtRef = useRef<number>(Date.now());
+  const [newPRExercise, setNewPRExercise] = useState<string | null>(null);
 
   const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -184,6 +185,14 @@ export function LogSection({
       const newSet: SetItem = { id: res.id, set_number: existingCount + 1, reps, weight_lbs: weight, exercise_id: exerciseId, exercise };
       setSession((prev) => prev ? { ...prev, sets: [...prev.sets, newSet] } : prev);
       setPendingExercises((prev) => prev.filter((e) => e.id !== exerciseId));
+      // PR detection — new weight beats all previous sessions
+      if (weight && weight > 0) {
+        const prevMax = (lastTimeSets[exerciseId] ?? []).reduce((m, s) => Math.max(m, s.weight_lbs ?? 0), 0);
+        if (weight > prevMax && prevMax > 0) {
+          setNewPRExercise(exerciseId);
+          setTimeout(() => setNewPRExercise(null), 4000);
+        }
+      }
     });
   }
 
@@ -369,6 +378,7 @@ export function LogSection({
             onRemove={() => removeExercise(exercise.id)}
             isPending={isPending}
             lastSets={lastTimeSets[exercise.id]}
+            isPR={newPRExercise === exercise.id}
           />
         ))}
         {pendingNotInSets.map((exercise) => (
@@ -381,6 +391,7 @@ export function LogSection({
             onRemove={() => removeExercise(exercise.id)}
             isPending={isPending}
             lastSets={lastTimeSets[exercise.id]}
+            isPR={newPRExercise === exercise.id}
           />
         ))}
       </div>
@@ -485,7 +496,7 @@ export function LogSection({
   );
 }
 
-function ExerciseBlock({ exercise, sets, draft, onDraftChange, onLogSet, onDeleteSet, onRemove, isPending, lastSets }: {
+function ExerciseBlock({ exercise, sets, draft, onDraftChange, onLogSet, onDeleteSet, onRemove, isPending, lastSets, isPR }: {
   exercise: Exercise;
   sets: SetItem[];
   draft: { reps: string; weight: string };
@@ -495,6 +506,7 @@ function ExerciseBlock({ exercise, sets, draft, onDraftChange, onLogSet, onDelet
   onRemove: () => void;
   isPending: boolean;
   lastSets?: { reps: number | null; weight_lbs: number | null }[];
+  isPR?: boolean;
 }) {
   const lastLabel = lastSets?.length
     ? lastSets.map((s) => `${s.reps ?? "—"}×${s.weight_lbs != null ? `${s.weight_lbs}` : "BW"}`).join("  ")
@@ -506,8 +518,16 @@ function ExerciseBlock({ exercise, sets, draft, onDraftChange, onLogSet, onDelet
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3"
         style={{ borderBottom: sets.length > 0 ? "1px solid rgba(255,235,180,0.05)" : "none" }}>
-        <div>
-          <p className="text-sm font-semibold" style={{ color: "#F5F0E8" }}>{exercise.name}</p>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold" style={{ color: "#F5F0E8" }}>{exercise.name}</p>
+            {isPR && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md tracking-wide"
+                style={{ background: "rgba(200,144,10,0.2)", color: "#F5CE58", border: "1px solid rgba(200,144,10,0.4)" }}>
+                NEW PR
+              </span>
+            )}
+          </div>
           <p className="text-[10px] mt-0.5" style={{ color: "rgba(200,144,10,0.6)" }}>
             {exercise.muscle_group} · {exercise.equipment}
           </p>
@@ -517,6 +537,7 @@ function ExerciseBlock({ exercise, sets, draft, onDraftChange, onLogSet, onDelet
             </p>
           )}
         </div>
+
         <button onClick={onRemove}
           className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-red-500/10 transition-all">
           <X className="w-3.5 h-3.5" style={{ color: "rgba(248,113,113,0.4)" }} />
