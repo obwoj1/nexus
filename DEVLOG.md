@@ -225,9 +225,27 @@ Full conversation history is passed to Claude every turn (as `messages` array). 
 - Ownership checks for set delete/update use a 2-query pattern (get session_id from set, then verify user_id on session) — safer than nested join filter with admin client.
 - Progress query: get all user session IDs first, then filter session_sets by exerciseId + those IDs, then group client-side by date. Clean and reliable.
 
-## What's next (Phase 4 target)
+---
 
-- General tracking: habits (daily checkmarks, streaks), subscriptions (amount + billing cycle), goals (milestones + progress)
-- Reading list: books + articles, status, ratings
-- Health metrics: sleep, water, mood, weight — daily entries + charts
-- Important dates: birthdays, deadlines — surface on dashboard
+## Session 12 — Phase 5: Workouts expansion (2026-05-23)
+
+**Goal:** Make the Workouts module feel complete — analytics overview, progress photos, session notes.
+
+**Done:**
+- `OverviewSection.tsx` — landing tab for Workouts. Aggregates all sessions (today + 90-day history) client-side. Stat cards: this week sessions, this week volume (k lbs), total sessions, total volume. Muscle group donut (recharts PieChart with MUSCLE_COLORS map). 8-week session frequency bar chart (sliding window from `today` prop — no extra DB fetch). "Most trained muscle" callout row.
+- `PhotosSection.tsx` — body progress photo gallery. Hidden file input triggered by "Add Photo" button. AnimatePresence upload form: image preview + date picker + optional notes. 3-column `aspect-square` grid with gradient date overlay. Click thumbnail → full lightbox (fixed overlay, AnimatePresence, Prev/Next nav with modulo wrapping, delete button). Fully optimistic state updates.
+- `app/actions/workouts.ts` — three new server actions: `uploadBodyPhotoAction` (File → Uint8Array → Supabase Storage `body-progress` bucket → signed URL → DB insert), `deleteBodyPhotoAction` (ownership check + storage remove + DB delete), `refreshPhotoUrlAction` (generate fresh signed URL if expired).
+- `supabase/migrations/20260523_011_body_photos.sql` — `body_photos` table (user_id, storage_path, date, notes), RLS, storage bucket (private, 10MB, images only), 3 storage RLS policies scoped to `/{user_id}/` folder prefix.
+- `workouts/page.tsx` — updated to fetch 90-day session window (was `limit(20)`), now also fetches `body_photos` and generates signed URLs server-side via `Promise.all`.
+- `WorkoutsShell.tsx` — expanded to 6-tab nav: Overview | Log | History | Templates | Progress | Photos. Defaults to Overview.
+- `LogSection.tsx` — session notes textarea below the session header stats. Saves on blur via `updateSessionAction({ notes })`. `notes` field added to `SessionState` interface.
+
+**Architecture notes:**
+- Supabase Storage signed URLs have a 1-hour validity. Generated server-side at page load. `refreshPhotoUrlAction` exists if they expire client-side.
+- `File.arrayBuffer()` → `Uint8Array` is required for Supabase Storage upload in Node.js runtime (edge runtime doesn't support it).
+- Overview analytics run entirely client-side from the props passed at page render — no additional DB calls on tab switch.
+
+**S3 note:** User expressed interest in swapping Supabase Storage for Amazon S3 post-MVP for real-world AWS experience. Integration would be near-identical (PutObjectCommand, GetObjectCommand with presigned URLs). Deferred until all core features are done.
+
+**What's next:**
+- Phase 6: Investments — US stocks + crypto, manual holdings, Finnhub/CoinGecko prices, portfolio view

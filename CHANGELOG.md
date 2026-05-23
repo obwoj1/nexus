@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Added — Phase 5: Workouts expansion (2026-05-23, Session 12)
+- feat(workouts): OverviewSection — weekly stats (sessions + lbs moved), muscle group volume donut, 8-week session frequency bar chart, "most trained" callout
+- feat(workouts): PhotosSection — upload progress photos, 3-column gallery with date overlay, full lightbox with prev/next nav + delete, optimistic UI
+- feat(workouts): server actions — uploadBodyPhotoAction (Supabase Storage), deleteBodyPhotoAction, refreshPhotoUrlAction
+- chore(db): body_photos table + storage bucket "body-progress" (private, 10MB limit, images only) with RLS
+- feat(workouts): WorkoutsShell — 6-tab nav (Overview / Log / History / Templates / Progress / Photos), defaults to Overview
+- feat(workouts): LogSection — session notes textarea, saves on blur via updateSessionAction
+- feat(workouts): workouts page fetches 90-day session history + body photos with signed URLs
+
 ### Added — Phase 5: Workouts (2026-05-21, Session 11 — partial)
 - chore(db): 5 new tables — exercises (global seed), workout_templates, template_exercises, workout_sessions, session_sets — all with RLS
 - chore(db): 36 exercises seeded across 7 muscle groups (Chest/Back/Legs/Shoulders/Arms/Core/Cardio)
