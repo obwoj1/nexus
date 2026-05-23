@@ -105,36 +105,44 @@ export async function deleteSetAction(id: string) {
 // ── TEMPLATES ─────────────────────────────────────────────────────────────────
 
 export async function createTemplateAction(name: string, exerciseIds: string[]) {
-  const userId = await getUserId();
-  const { data, error } = await db()
-    .from("workout_templates")
-    .insert({ user_id: userId, name })
-    .select("id")
-    .single();
-  if (error) return { error: error.message };
-  if (exerciseIds.length > 0) {
-    await db().from("template_exercises").insert(
-      exerciseIds.map((exerciseId, i) => ({ template_id: data.id, exercise_id: exerciseId, display_order: i })),
-    );
+  try {
+    const userId = await getUserId();
+    const { data, error } = await db()
+      .from("workout_templates")
+      .insert({ user_id: userId, name })
+      .select("id")
+      .single();
+    if (error) return { error: error.message };
+    if (exerciseIds.length > 0) {
+      await db().from("template_exercises").insert(
+        exerciseIds.map((exerciseId, i) => ({ template_id: data.id, exercise_id: exerciseId, display_order: i })),
+      );
+    }
+    revalidatePath("/workouts");
+    return { id: data.id as string };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Failed to create template" };
   }
-  revalidatePath("/workouts");
-  return { id: data.id as string };
 }
 
 export async function deleteTemplateAction(id: string) {
-  const userId = await getUserId();
-  await db().from("workout_templates").delete().eq("id", id).eq("user_id", userId);
-  revalidatePath("/workouts");
+  try {
+    const userId = await getUserId();
+    await db().from("workout_templates").delete().eq("id", id).eq("user_id", userId);
+    revalidatePath("/workouts");
+  } catch { /* non-critical */ }
 }
 
 export async function removeExerciseFromTemplateAction(id: string) {
-  const userId = await getUserId();
-  const { data: te } = await db().from("template_exercises").select("template_id").eq("id", id).single();
-  if (!te) return;
-  const { data: tmpl } = await db().from("workout_templates").select("user_id").eq("id", te.template_id).single();
-  if ((tmpl as { user_id: string } | null)?.user_id !== userId) return;
-  await db().from("template_exercises").delete().eq("id", id);
-  revalidatePath("/workouts");
+  try {
+    const userId = await getUserId();
+    const { data: te } = await db().from("template_exercises").select("template_id").eq("id", id).single();
+    if (!te) return;
+    const { data: tmpl } = await db().from("workout_templates").select("user_id").eq("id", te.template_id).single();
+    if ((tmpl as { user_id: string } | null)?.user_id !== userId) return;
+    await db().from("template_exercises").delete().eq("id", id);
+    revalidatePath("/workouts");
+  } catch { /* non-critical */ }
 }
 
 // ── PROGRESS ──────────────────────────────────────────────────────────────────
