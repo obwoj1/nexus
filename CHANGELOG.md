@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed — Workouts reliability (2026-05-23, Session 12 continued)
+- fix(workouts): wrap all server actions in try/catch — createSession, updateSession, deleteSession, addSet, updateSet, deleteSet, createTemplate, deleteTemplate, removeExerciseFromTemplate now return {error} instead of throwing silently
+- fix(workouts): surface createSession error in LogSection UI — red error banner below empty state
+- feat(workouts): close exercise picker on Escape key or click outside (useEffect + ref)
+- feat(workouts): session notes visible in HistorySection expanded view
+
 ### Added — Phase 5: Workouts expansion (2026-05-23, Session 12)
 - feat(workouts): OverviewSection — weekly stats (sessions + lbs moved), muscle group volume donut, 8-week session frequency bar chart, "most trained" callout
 - feat(workouts): PhotosSection — upload progress photos, 3-column gallery with date overlay, full lightbox with prev/next nav + delete, optimistic UI
