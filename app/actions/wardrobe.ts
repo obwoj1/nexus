@@ -20,7 +20,7 @@ const CLAUDIA_WARDROBE_SYSTEM = `You are Claudia — a personal AI and stylist. 
 - When building an outfit: be confident, taste-forward, and direct. Speak like a friend with genuinely good style — not stiff, not over-the-top. Explain why pieces work together in 2-3 sentences max. Keep it cool.
 You dress streetwear/chill-leaning but adapt to the occasion the user describes.`;
 
-// ── UPLOAD + AUTO-CATEGORIZE ──────────────────────────────────────────────────
+// ── UPLOAD (instant — no Gemini, just storage) ───────────────────────────────
 
 export async function uploadWardrobeItemAction(formData: FormData) {
   try {
@@ -29,40 +29,9 @@ export async function uploadWardrobeItemAction(formData: FormData) {
     if (!file) return { error: "No file provided" };
 
     const bytes = await file.arrayBuffer();
-    const base64 = Buffer.from(bytes).toString("base64");
-
-    // Gemini Vision — auto-categorize and describe the clothing item
-    const vision = await gemini.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { inlineData: { mimeType: file.type, data: base64 } },
-            {
-              text: `${CLAUDIA_WARDROBE_SYSTEM}\n\nAnalyze this clothing item and return ONLY valid JSON (no markdown, no explanation):
-{
-  "category": "top|bottom|shoes|outerwear|headwear|accessory",
-  "color": "primary color description (e.g. 'navy blue', 'off-white')",
-  "description": "brief item description, max 15 words (e.g. 'oversized navy fleece hoodie with kangaroo pocket')",
-  "brand": "brand name if clearly visible, otherwise null"
-}`,
-            },
-          ],
-        },
-      ],
-    });
-
-    let meta = { category: "top", color: null as string | null, description: null as string | null, brand: null as string | null };
-    try {
-      const raw = vision.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
-      const clean = raw.replace(/```json|```/g, "").trim();
-      meta = { ...meta, ...JSON.parse(clean) };
-    } catch { /* keep defaults */ }
-
-    // Upload photo to Supabase Storage
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-    const path = `${userId}/items/${Date.now()}.${ext}`;
+    const path = `${userId}/items/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
     const { error: uploadError } = await db().storage
       .from("wardrobe")
       .upload(path, new Uint8Array(bytes), { contentType: file.type, upsert: false });
@@ -72,29 +41,81 @@ export async function uploadWardrobeItemAction(formData: FormData) {
 
     const { data, error } = await db()
       .from("wardrobe_items")
-      .insert({
-        user_id: userId,
-        storage_path: path,
-        category: meta.category,
-        color: meta.color,
-        description: meta.description,
-        brand: meta.brand,
-      })
+      .insert({ user_id: userId, storage_path: path, category: null, analyzed: false })
       .select("id")
       .single();
     if (error) return { error: error.message };
 
-    revalidatePath("/wardrobe");
-    return {
-      id: data.id as string,
-      url: signed?.signedUrl ?? "",
-      category: meta.category,
-      color: meta.color,
-      description: meta.description,
-      brand: meta.brand,
-    };
+    return { id: data.id as string, url: signed?.signedUrl ?? "" };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Upload failed" };
+  }
+}
+
+// ── ANALYZE SELECTED ITEMS (parallel Gemini Vision) ──────────────────────────
+
+export async function analyzeWardrobeItemsAction(ids: string[]): Promise<{
+  results: { id: string; category: string; color: string | null; description: string | null; brand: string | null }[];
+  error?: never;
+} | { error: string }> {
+  try {
+    const userId = await getUserId();
+
+    const { data: items } = await db()
+      .from("wardrobe_items")
+      .select("id, storage_path")
+      .in("id", ids)
+      .eq("user_id", userId);
+
+    if (!items?.length) return { error: "No items found" };
+
+    const results = await Promise.all(
+      items.map(async (item) => {
+        const { data: fileData } = await db().storage.from("wardrobe").download(item.storage_path);
+        if (!fileData) return null;
+
+        const buf = await fileData.arrayBuffer();
+        const base64 = Buffer.from(buf).toString("base64");
+
+        const vision = await gemini.models.generateContent({
+          model: "gemini-2.0-flash",
+          contents: [{
+            role: "user",
+            parts: [
+              { inlineData: { mimeType: "image/jpeg", data: base64 } },
+              {
+                text: `${CLAUDIA_WARDROBE_SYSTEM}\n\nAnalyze this clothing item and return ONLY valid JSON (no markdown):
+{
+  "category": "top|bottom|shoes|outerwear|headwear|accessory",
+  "color": "primary color (e.g. 'navy blue', 'off-white')",
+  "description": "brief description, max 15 words",
+  "brand": "brand name if clearly visible, otherwise null"
+}`,
+              },
+            ],
+          }],
+        });
+
+        let meta = { category: "top", color: null as string | null, description: null as string | null, brand: null as string | null };
+        try {
+          const raw = vision.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
+          meta = { ...meta, ...JSON.parse(raw.replace(/```json|```/g, "").trim()) };
+        } catch { /* keep defaults */ }
+
+        await db()
+          .from("wardrobe_items")
+          .update({ category: meta.category, color: meta.color, description: meta.description, brand: meta.brand, analyzed: true })
+          .eq("id", item.id);
+
+        return { id: item.id, ...meta };
+      })
+    );
+
+    const valid = results.filter(Boolean) as { id: string; category: string; color: string | null; description: string | null; brand: string | null }[];
+    revalidatePath("/wardrobe");
+    return { results: valid };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Analysis failed" };
   }
 }
 
