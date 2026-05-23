@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { ChevronDown, ChevronUp, Trash2, History } from "lucide-react";
+import { useState, useTransition, useMemo } from "react";
+import { ChevronDown, ChevronUp, Trash2, History, Search } from "lucide-react";
 import { deleteSessionAction } from "@/app/actions/workouts";
 
 interface Exercise { id: string; name: string; muscle_group: string; }
@@ -11,7 +11,17 @@ interface Session { id: string; name: string; date: string; duration_minutes: nu
 export function HistorySection({ sessions: initial }: { sessions: Session[] }) {
   const [sessions, setSessions] = useState(initial);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return sessions;
+    const q = search.toLowerCase();
+    return sessions.filter((s) =>
+      s.name.toLowerCase().includes(q) ||
+      s.session_sets.some((set) => set.exercises.name.toLowerCase().includes(q))
+    );
+  }, [sessions, search]);
 
   function toggle(id: string) {
     setExpanded((prev) => {
@@ -41,11 +51,25 @@ export function HistorySection({ sessions: initial }: { sessions: Session[] }) {
 
   return (
     <div className="p-8 max-w-2xl">
-      <h2 className="text-xl font-semibold tracking-tight mb-1" style={{ color: "#F5F0E8" }}>History</h2>
-      <p className="text-xs mb-8" style={{ color: "rgba(245,240,232,0.35)" }}>{sessions.length} sessions</p>
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-xl font-semibold tracking-tight" style={{ color: "#F5F0E8" }}>History</h2>
+      </div>
+      <p className="text-xs mb-5" style={{ color: "rgba(245,240,232,0.35)" }}>{sessions.length} sessions</p>
+
+      {/* Search */}
+      <div className="relative mb-6">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "rgba(245,240,232,0.25)" }} />
+        <input value={search} onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by session name or exercise…"
+          className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-transparent text-sm outline-none"
+          style={{ color: "#F5F0E8", border: "1px solid rgba(255,235,180,0.1)" }} />
+      </div>
 
       <div className="flex flex-col gap-3">
-        {sessions.map((session) => {
+        {filtered.length === 0 && (
+          <p className="text-sm text-center py-8" style={{ color: "rgba(245,240,232,0.25)" }}>No sessions match</p>
+        )}
+        {filtered.map((session) => {
           const isOpen = expanded.has(session.id);
           const uniqueExercises = [...new Set(session.session_sets.map((s) => s.exercises.name))];
           const totalVolume = session.session_sets.reduce((sum, s) => sum + (s.weight_lbs ?? 0) * (s.reps ?? 0), 0);
