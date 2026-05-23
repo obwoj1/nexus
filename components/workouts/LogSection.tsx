@@ -4,7 +4,7 @@ import { useState, useTransition, useMemo, useEffect, useRef } from "react";
 import { Plus, Trash2, Dumbbell, ChevronDown, X } from "lucide-react";
 import {
   createSessionAction, addSetAction, deleteSetAction,
-  updateSessionAction, deleteSessionAction,
+  updateSessionAction, deleteSessionAction, createCustomExerciseAction,
 } from "@/app/actions/workouts";
 
 interface Exercise { id: string; name: string; muscle_group: string; equipment: string; type: string; }
@@ -49,6 +49,10 @@ export function LogSection({
   const [draftSets, setDraftSets] = useState<Record<string, { reps: string; weight: string }>>({});
   const [notesValue, setNotesValue] = useState(initialSession?.notes ?? "");
   const [showPicker, setShowPicker] = useState(false);
+  const [customCreate, setCustomCreate] = useState(false);
+  const [customMuscle, setCustomMuscle] = useState("Chest");
+  const [customEquipment, setCustomEquipment] = useState("Barbell");
+  const [customType, setCustomType] = useState("strength");
   const [pickerSearch, setPickerSearch] = useState("");
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
   const [nameEdit, setNameEdit] = useState(false);
@@ -158,6 +162,18 @@ export function LogSection({
     setSession((prev) => prev ? { ...prev, name: editedName.trim() } : prev);
     setNameEdit(false);
     startTransition(() => updateSessionAction(session.id, { name: editedName.trim() }));
+  }
+
+  function handleCreateCustom() {
+    if (!pickerSearch.trim()) return;
+    startTransition(async () => {
+      const res = await createCustomExerciseAction(pickerSearch.trim(), customMuscle, customEquipment, customType);
+      if ("error" in res) return;
+      const newEx: Exercise = { id: res.id, name: pickerSearch.trim(), muscle_group: customMuscle, equipment: customEquipment, type: customType };
+      addExercise(newEx);
+      setCustomCreate(false);
+      setCustomMuscle("Chest"); setCustomEquipment("Barbell"); setCustomType("strength");
+    });
   }
 
   function saveNotes() {
@@ -335,7 +351,50 @@ export function LogSection({
             <div className="p-2">
               {filteredExercises ? (
                 filteredExercises.length === 0
-                  ? <p className="text-xs text-center py-4" style={{ color: "rgba(245,240,232,0.3)" }}>No results</p>
+                  ? (
+                    <div className="p-3">
+                      {!customCreate ? (
+                        <button onClick={() => setCustomCreate(true)}
+                          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-all"
+                          style={{ background: "rgba(200,144,10,0.08)", border: "1px solid rgba(200,144,10,0.2)", color: "#C8900A" }}>
+                          <Plus className="w-3.5 h-3.5" /> Create &ldquo;{pickerSearch}&rdquo; as custom exercise
+                        </button>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(200,144,10,0.6)" }}>New: {pickerSearch}</p>
+                          {(["Muscle group", "Equipment", "Type"] as const).map((label) => {
+                            const opts = label === "Muscle group"
+                              ? ["Chest","Back","Legs","Shoulders","Arms","Core","Cardio"]
+                              : label === "Equipment"
+                              ? ["Barbell","Dumbbell","Bodyweight","Cable","Machine","Other"]
+                              : ["strength","cardio","bodyweight"];
+                            const val = label === "Muscle group" ? customMuscle : label === "Equipment" ? customEquipment : customType;
+                            const setter = label === "Muscle group" ? setCustomMuscle : label === "Equipment" ? setCustomEquipment : setCustomType;
+                            return (
+                              <div key={label}>
+                                <p className="text-[9px] uppercase tracking-widest mb-1" style={{ color: "rgba(245,240,232,0.3)" }}>{label}</p>
+                                <select value={val} onChange={(e) => setter(e.target.value)}
+                                  className="w-full bg-transparent text-xs outline-none px-2 py-1.5 rounded-lg"
+                                  style={{ color: "#F5F0E8", border: "1px solid rgba(255,235,180,0.1)", colorScheme: "dark" }}>
+                                  {opts.map((o) => <option key={o} value={o}>{o}</option>)}
+                                </select>
+                              </div>
+                            );
+                          })}
+                          <div className="flex gap-2 mt-1">
+                            <button onClick={handleCreateCustom} disabled={isPending}
+                              className="flex-1 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40"
+                              style={{ background: "rgba(200,144,10,0.15)", border: "1px solid rgba(200,144,10,0.3)", color: "#C8900A" }}>
+                              {isPending ? "Creating…" : "Create & Add"}
+                            </button>
+                            <button onClick={() => setCustomCreate(false)}
+                              className="px-3 py-1.5 rounded-lg text-xs"
+                              style={{ color: "rgba(245,240,232,0.4)" }}>Cancel</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
                   : filteredExercises.map((e) => (
                     <button key={e.id} onClick={() => addExercise(e)}
                       className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/5 transition-colors flex items-center justify-between"
