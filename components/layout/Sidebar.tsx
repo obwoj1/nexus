@@ -97,32 +97,27 @@ export function Sidebar() {
       </aside>
 
       {/* ── Mobile bottom tab bar (hidden on desktop) ── */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around px-2 py-2"
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center overflow-x-auto no-scrollbar px-1 py-1 gap-0.5"
         style={{ background: "#0D0B08", borderTop: "1px solid rgba(255,235,180,0.07)" }}>
         {navItems.filter((i) => i.live).map(({ icon: Icon, label, href }) => {
           const active = pathname === href;
           return (
             <Link key={href} href={href}
-              className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-all"
-              style={{ minWidth: 44 }}>
-              <Icon className="w-5 h-5 transition-colors"
-                style={{ color: active ? "#E8B428" : "rgba(245,240,232,0.3)" }} />
-              <span className="text-[9px] font-medium transition-colors"
-                style={{ color: active ? "#E8B428" : "rgba(245,240,232,0.3)" }}>
+              className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl shrink-0 transition-all"
+              style={{ background: active ? "rgba(200,144,10,0.1)" : "transparent" }}>
+              <Icon className="w-[18px] h-[18px] transition-colors"
+                style={{ color: active ? "#E8B428" : "rgba(245,240,232,0.35)" }} />
+              <span className="text-[9px] font-medium transition-colors whitespace-nowrap"
+                style={{ color: active ? "#E8B428" : "rgba(245,240,232,0.35)" }}>
                 {label}
               </span>
-              {active && (
-                <span className="w-1 h-1 rounded-full mt-0.5"
-                  style={{ background: "#C8900A" }} />
-              )}
             </Link>
           );
         })}
         <button onClick={handleSignOut}
-          className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl"
-          style={{ minWidth: 44 }}>
-          <LogOut className="w-5 h-5" style={{ color: "rgba(245,240,232,0.25)" }} />
-          <span className="text-[9px] font-medium" style={{ color: "rgba(245,240,232,0.25)" }}>Out</span>
+          className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl shrink-0 ml-auto">
+          <LogOut className="w-[18px] h-[18px]" style={{ color: "rgba(245,240,232,0.2)" }} />
+          <span className="text-[9px] font-medium" style={{ color: "rgba(245,240,232,0.2)" }}>Out</span>
         </button>
       </nav>
     </>

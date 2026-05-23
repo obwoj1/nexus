@@ -49,7 +49,7 @@ export function ReadingSection({ reading: initial }: { reading: ReadingItem[] })
   }
 
   return (
-    <div className="p-8 max-w-4xl">
+    <div className="p-4 md:p-8 max-w-4xl w-full">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h2 className="text-xl font-semibold tracking-tight" style={{ color: "#F5F0E8" }}>Reading List</h2>

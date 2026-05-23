@@ -37,7 +37,7 @@ export function ProgressSection({ exercises }: { exercises: Exercise[] }) {
   };
 
   return (
-    <div className="p-8 max-w-2xl">
+    <div className="p-4 md:p-8 max-w-2xl w-full">
       <div className="mb-8">
         <h2 className="text-xl font-semibold tracking-tight" style={{ color: "#F5F0E8" }}>Progress</h2>
         <p className="text-xs mt-0.5" style={{ color: "rgba(245,240,232,0.35)" }}>Strength trends over time per exercise</p>

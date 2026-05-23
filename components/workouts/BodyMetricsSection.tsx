@@ -48,7 +48,7 @@ export function BodyMetricsSection({ metrics: initial, today }: { metrics: Metri
   };
 
   return (
-    <div className="p-8 max-w-2xl">
+    <div className="p-4 md:p-8 max-w-2xl w-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>

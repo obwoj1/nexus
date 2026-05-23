@@ -247,7 +247,7 @@ export function LogSection({
   // ── No session today ──────────────────────────────────────────────────────────
   if (!session) {
     return (
-      <div className="p-8 max-w-2xl">
+      <div className="p-4 md:p-8 max-w-2xl w-full">
         <div className="mb-8">
           <h2 className="text-xl font-semibold tracking-tight" style={{ color: "#F5F0E8" }}>Log</h2>
           <p className="text-xs mt-0.5" style={{ color: "rgba(245,240,232,0.35)" }}>{todayLabel}</p>
@@ -300,7 +300,7 @@ export function LogSection({
 
   // ── Active session ────────────────────────────────────────────────────────────
   return (
-    <div className="p-8 max-w-2xl">
+    <div className="p-4 md:p-8 max-w-2xl w-full">
       {/* Header */}
       <div className="flex items-start justify-between mb-1.5">
         {nameEdit ? (

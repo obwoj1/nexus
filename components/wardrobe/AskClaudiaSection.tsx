@@ -51,7 +51,7 @@ export function AskClaudiaSection({ items }: { items: WardrobeItem[] }) {
   const selectedItems = items.filter((i) => outfit?.itemIds.includes(i.id));
 
   return (
-    <div className="p-8 max-w-2xl">
+    <div className="p-4 md:p-8 max-w-2xl w-full">
       {/* Header */}
       <div className="mb-8">
         <h2 className="text-xl font-semibold tracking-tight" style={{ color: "#F5F0E8" }}>Ask Claudia</h2>

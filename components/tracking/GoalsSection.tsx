@@ -50,7 +50,7 @@ export function GoalsSection({ goals: initial }: { goals: Goal[] }) {
   }));
 
   return (
-    <div className="p-8 max-w-3xl">
+    <div className="p-4 md:p-8 max-w-3xl w-full">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h2 className="text-xl font-semibold tracking-tight" style={{ color: "#F5F0E8" }}>Goals</h2>

@@ -100,7 +100,7 @@ export default async function MailPage() {
     <div className="flex flex-col flex-1">
       <Topbar section="MAIL" title="Inbox" />
 
-      <main className="flex-1 p-8 max-w-3xl">
+      <main className="flex-1 p-4 md:p-8 max-w-3xl w-full">
         {hasError && (
           <div className="mb-6 rounded-xl p-4 flex items-center gap-3"
             style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.2)" }}>

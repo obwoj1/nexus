@@ -38,7 +38,7 @@ export function HistorySection({ sessions: initial }: { sessions: Session[] }) {
 
   if (sessions.length === 0) {
     return (
-      <div className="p-8 max-w-2xl">
+      <div className="p-4 md:p-8 max-w-2xl w-full">
         <h2 className="text-xl font-semibold tracking-tight mb-1" style={{ color: "#F5F0E8" }}>History</h2>
         <p className="text-xs mb-8" style={{ color: "rgba(245,240,232,0.35)" }}>Past sessions</p>
         <div className="flex flex-col items-center justify-center py-24 gap-3">
@@ -50,7 +50,7 @@ export function HistorySection({ sessions: initial }: { sessions: Session[] }) {
   }
 
   return (
-    <div className="p-8 max-w-2xl">
+    <div className="p-4 md:p-8 max-w-2xl w-full">
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-xl font-semibold tracking-tight" style={{ color: "#F5F0E8" }}>History</h2>
       </div>

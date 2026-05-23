@@ -87,7 +87,7 @@ export function OverviewSection({
 
   if (allSessions.length === 0) {
     return (
-      <div className="p-8 max-w-3xl">
+      <div className="p-4 md:p-8 max-w-3xl w-full">
         <h2 className="text-xl font-semibold tracking-tight mb-1" style={{ color: "#F5F0E8" }}>Overview</h2>
         <p className="text-xs mb-8" style={{ color: "rgba(245,240,232,0.35)" }}>Your workout analytics</p>
         <div className="flex flex-col items-center justify-center py-24 gap-3">
@@ -99,7 +99,7 @@ export function OverviewSection({
   }
 
   return (
-    <div className="p-8 max-w-3xl">
+    <div className="p-4 md:p-8 max-w-3xl w-full">
       <h2 className="text-xl font-semibold tracking-tight mb-1" style={{ color: "#F5F0E8" }}>Overview</h2>
       <p className="text-xs mb-8" style={{ color: "rgba(245,240,232,0.35)" }}>Last 90 days</p>
 
