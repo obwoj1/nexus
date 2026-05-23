@@ -58,7 +58,7 @@ export function WorkoutsShell(props: any) {
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {active === "overview"   && <OverviewSection  todaySession={props.todaySession} recentSessions={props.recentSessions} today={props.today} />}
-        {active === "log"       && <LogSection       exercises={props.exercises} todaySession={props.todaySession} today={props.today} templates={props.templates} />}
+        {active === "log"       && <LogSection       exercises={props.exercises} todaySession={props.todaySession} today={props.today} templates={props.templates} recentSessions={props.recentSessions} />}
         {active === "history"   && <HistorySection   sessions={props.recentSessions} />}
         {active === "templates" && <TemplatesSection templates={props.templates} exercises={props.exercises} />}
         {active === "progress"  && <ProgressSection  exercises={props.exercises} />}
