@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Added — Wardrobe + Claudia Stylist (2026-05-23, Session 13)
+- feat(wardrobe): /wardrobe page — server fetches wardrobe items + saved outfits with signed URLs in parallel
+- feat(wardrobe): WardrobeShell — 3-tab nav: Wardrobe / Ask Claudia / Saved Fits
+- feat(wardrobe): WardrobeSection — multi-photo upload, Gemini Vision auto-categorizes each item (category, color, description, brand), category filter pills, hover overlay with item info, delete
+- feat(wardrobe): AskClaudiaSection — vibe/occasion prompt, quick-pick vibe chips, Gemini selects outfit from wardrobe + writes stylist caption, Gemini Imagen generates vertical flat-lay image, save fit
+- feat(wardrobe): SavedFitsSection — outfit grid with generated flat-lay, expand for caption + piece thumbnails, mark worn (tracks worn_count + last_worn), delete
+- feat(wardrobe): server actions — uploadWardrobeItemAction (Gemini Vision categorization + Supabase Storage), generateOutfitAction (2-step: vision selection → image generation), saveOutfitAction, markOutfitWornAction, deleteOutfitAction, deleteWardrobeItemAction
+- chore(db): wardrobe_items + saved_outfits tables with RLS; wardrobe storage bucket (private, 10MB, images only)
+- chore(deps): @google/genai v2.6.0 for Gemini Vision + image generation
+- feat(sidebar): Wardrobe nav item enabled (live: true)
+
 ### Added — Phase 5: Workouts — full expansion (2026-05-23, Session 12 continued)
 - feat(workouts): streak counter — OverviewSection computes consecutive-day streak from combined session set
 - feat(workouts): 1RM estimator — ProgressSection adds dashed gold Est. 1RM line (Epley formula) to max-weight chart + 3-column personal bests grid

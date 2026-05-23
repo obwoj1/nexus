@@ -284,4 +284,37 @@ Full conversation history is passed to Claude every turn (as `messages` array). 
 - Custom exercises stored in separate table from global `exercises` to avoid unique constraint conflicts with the 36 seeded exercises.
 
 **What's next:**
+- Wardrobe feature (Session 13), then Phase 6: Investments
+
+---
+
+## Session 13 — Wardrobe + Claudia Stylist (2026-05-23)
+
+**Goal:** Build a personal wardrobe manager where Claudia (powered by Gemini) auto-categorizes clothing on upload and generates outfit flat-lay images on demand.
+
+**Done:**
+- `supabase/migrations/20260523_014_wardrobe.sql` — `wardrobe_items` (id, user_id, storage_path, category, color, description, brand) and `saved_outfits` (id, user_id, name, item_ids uuid[], generated_image_path, caption, worn_count, last_worn). Private `wardrobe` storage bucket (10MB, images only). RLS on all three.
+- `app/actions/wardrobe.ts` — 6 server actions:
+  - `uploadWardrobeItemAction` — takes a File from FormData, converts to base64, sends to Gemini Vision alongside a structured JSON prompt, parses returned category/color/description/brand, uploads photo to Supabase Storage, inserts row.
+  - `generateOutfitAction` — fetches all wardrobe items + downloads each photo from storage, sends all images + wardrobe inventory text to `gemini-2.0-flash` which returns JSON (selected item IDs + stylist caption). Builds vertical flat-lay prompt from selected items' descriptions, calls `gemini-2.0-flash-preview-image-generation` which returns base64 image data. Uploads generated image to storage, returns signed URL.
+  - `saveOutfitAction`, `deleteOutfitAction`, `markOutfitWornAction`, `deleteWardrobeItemAction` — standard CRUD with ownership checks.
+- `app/(app)/wardrobe/page.tsx` — parallel fetch for wardrobe items + saved outfits, server-side signed URL generation for all photos.
+- `components/wardrobe/WardrobeShell.tsx` — 3-tab nav shell matching Workouts style.
+- `components/wardrobe/WardrobeSection.tsx` — multi-file upload (triggers Gemini Vision per file), category filter pills, 5-column photo grid with hover overlay, delete.
+- `components/wardrobe/AskClaudiaSection.tsx` — vibe chips + free-text prompt, loading state, generated flat-lay display, Claudia's caption card, piece thumbnails, save button.
+- `components/wardrobe/SavedFitsSection.tsx` — 2-column grid, click to expand shows caption + pieces + mark worn + delete.
+
+**Architecture — how the pieces connect:**
+- The browser never touches Gemini directly. All AI calls happen in server actions (`"use server"`) running on Vercel's Node.js runtime.
+- Gemini Vision receives images as base64 `inlineData` in the `contents` array — alongside a text prompt telling it what JSON to return.
+- Image generation uses `responseModalities: ["IMAGE"]` — Gemini returns image bytes as base64 in `candidates[0].content.parts`, decoded with `Buffer.from(base64, "base64")`, uploaded to Supabase Storage.
+- `CLAUDIA_WARDROBE_SYSTEM` prompt instructs Claudia to switch tone — precise when categorizing, confident-stylist when building fits.
+- Signed URLs are generated server-side at page load (1-hour validity). Client state seeded from these props — no client DB calls.
+
+**Key decision — why two Gemini calls for outfit generation:**
+A single call can't both reason about which clothes to pick AND generate an image simultaneously. Call 1 (vision model) picks items + writes caption. Call 2 (image generation model) gets text descriptions of chosen items and generates the flat-lay. The description bridge means the generated image represents the actual selected pieces.
+
+**New env var:** `GEMINI_API_KEY` — added to `.env.local` (gitignored) and `.env.example` (placeholder).
+
+**What's next:**
 - Phase 6: Investments — US stocks + crypto, manual holdings, Finnhub/CoinGecko prices, portfolio view
