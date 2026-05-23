@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useEffect, useRef } from "react";
 import { Plus, Trash2, Dumbbell, ChevronDown, X } from "lucide-react";
 import {
   createSessionAction, addSetAction, deleteSetAction,
@@ -54,6 +54,21 @@ export function LogSection({
   const [nameEdit, setNameEdit] = useState(false);
   const [editedName, setEditedName] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showPicker) return;
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") { setShowPicker(false); setPickerSearch(""); } }
+    function onClickOutside(e: MouseEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setShowPicker(false); setPickerSearch("");
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onClickOutside);
+    return () => { document.removeEventListener("keydown", onKey); document.removeEventListener("mousedown", onClickOutside); };
+  }, [showPicker]);
 
   const exerciseGroups = useMemo(() => groupByExercise(session?.sets ?? []), [session?.sets]);
   const setExIds = useMemo(() => new Set(exerciseGroups.map((g) => g.exercise.id)), [exerciseGroups]);
@@ -306,7 +321,7 @@ export function LogSection({
         </button>
 
         {showPicker && (
-          <div className="absolute top-full mt-2 left-0 w-80 rounded-2xl z-20 max-h-[400px] overflow-y-auto"
+          <div ref={pickerRef} className="absolute top-full mt-2 left-0 w-80 rounded-2xl z-20 max-h-[400px] overflow-y-auto"
             style={{ background: "#0D0C0A", border: "1px solid rgba(200,144,10,0.2)" }}>
             <div className="p-3 sticky top-0" style={{ background: "#0D0C0A", borderBottom: "1px solid rgba(200,144,10,0.1)" }}>
               <input
