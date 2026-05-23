@@ -21,14 +21,19 @@ function groupByExercise(sets: SetItem[]) {
   return Array.from(map.values());
 }
 
+interface RecentSet { reps: number | null; weight_lbs: number | null; exercise_id: string; }
+interface RecentSession { session_sets: RecentSet[]; date: string; }
+
 export function LogSection({
-  exercises, todaySession: initialSession, today, templates,
+  exercises, todaySession: initialSession, today, templates, recentSessions = [],
 }: {
   exercises: Exercise[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   todaySession: any;
   today: string;
   templates: Template[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  recentSessions?: any[];
 }) {
   const [session, setSession] = useState<SessionState | null>(() => {
     if (!initialSession) return null;
@@ -97,6 +102,19 @@ export function LogSection({
     startTransition(() => updateSessionAction(session.id, { duration_minutes: mins }));
     setSession((prev) => prev ? { ...prev, duration_minutes: mins } : prev);
   }
+
+  // Build last-time sets map: exerciseId → sets from most recent session that included it
+  const lastTimeSets = useMemo(() => {
+    const map: Record<string, { reps: number | null; weight_lbs: number | null }[]> = {};
+    const sorted = [...(recentSessions as RecentSession[])].sort((a, b) => b.date.localeCompare(a.date));
+    for (const s of sorted) {
+      for (const set of s.session_sets) {
+        if (!map[set.exercise_id]) map[set.exercise_id] = [];
+        map[set.exercise_id].push({ reps: set.reps, weight_lbs: set.weight_lbs });
+      }
+    }
+    return map;
+  }, [recentSessions]);
 
   const exerciseGroups = useMemo(() => groupByExercise(session?.sets ?? []), [session?.sets]);
   const setExIds = useMemo(() => new Set(exerciseGroups.map((g) => g.exercise.id)), [exerciseGroups]);
@@ -350,6 +368,7 @@ export function LogSection({
             onDeleteSet={removeSet}
             onRemove={() => removeExercise(exercise.id)}
             isPending={isPending}
+            lastSets={lastTimeSets[exercise.id]}
           />
         ))}
         {pendingNotInSets.map((exercise) => (
@@ -361,6 +380,7 @@ export function LogSection({
             onDeleteSet={removeSet}
             onRemove={() => removeExercise(exercise.id)}
             isPending={isPending}
+            lastSets={lastTimeSets[exercise.id]}
           />
         ))}
       </div>
@@ -465,7 +485,7 @@ export function LogSection({
   );
 }
 
-function ExerciseBlock({ exercise, sets, draft, onDraftChange, onLogSet, onDeleteSet, onRemove, isPending }: {
+function ExerciseBlock({ exercise, sets, draft, onDraftChange, onLogSet, onDeleteSet, onRemove, isPending, lastSets }: {
   exercise: Exercise;
   sets: SetItem[];
   draft: { reps: string; weight: string };
@@ -474,7 +494,12 @@ function ExerciseBlock({ exercise, sets, draft, onDraftChange, onLogSet, onDelet
   onDeleteSet: (id: string) => void;
   onRemove: () => void;
   isPending: boolean;
+  lastSets?: { reps: number | null; weight_lbs: number | null }[];
 }) {
+  const lastLabel = lastSets?.length
+    ? lastSets.map((s) => `${s.reps ?? "—"}×${s.weight_lbs != null ? `${s.weight_lbs}` : "BW"}`).join("  ")
+    : null;
+
   return (
     <div className="rounded-2xl overflow-hidden"
       style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,235,180,0.07)" }}>
@@ -486,6 +511,11 @@ function ExerciseBlock({ exercise, sets, draft, onDraftChange, onLogSet, onDelet
           <p className="text-[10px] mt-0.5" style={{ color: "rgba(200,144,10,0.6)" }}>
             {exercise.muscle_group} · {exercise.equipment}
           </p>
+          {lastLabel && (
+            <p className="text-[10px] mt-1 font-mono" style={{ color: "rgba(245,240,232,0.3)" }}>
+              Last: {lastLabel}
+            </p>
+          )}
         </div>
         <button onClick={onRemove}
           className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-red-500/10 transition-all">
