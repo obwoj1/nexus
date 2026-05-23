@@ -58,40 +58,48 @@ export async function addSetAction(
   reps: number | null,
   weightLbs: number | null,
 ) {
-  const userId = await getUserId();
-  const { data: session } = await db()
-    .from("workout_sessions")
-    .select("id")
-    .eq("id", sessionId)
-    .eq("user_id", userId)
-    .single();
-  if (!session) return { error: "Session not found" };
+  try {
+    const userId = await getUserId();
+    const { data: session } = await db()
+      .from("workout_sessions")
+      .select("id")
+      .eq("id", sessionId)
+      .eq("user_id", userId)
+      .single();
+    if (!session) return { error: "Session not found" };
 
-  const { data, error } = await db()
-    .from("session_sets")
-    .insert({ session_id: sessionId, exercise_id: exerciseId, set_number: setNumber, reps, weight_lbs: weightLbs })
-    .select("id")
-    .single();
-  if (error) return { error: error.message };
-  return { id: data.id as string };
+    const { data, error } = await db()
+      .from("session_sets")
+      .insert({ session_id: sessionId, exercise_id: exerciseId, set_number: setNumber, reps, weight_lbs: weightLbs })
+      .select("id")
+      .single();
+    if (error) return { error: error.message };
+    return { id: data.id as string };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Failed to log set" };
+  }
 }
 
 export async function updateSetAction(id: string, reps: number | null, weightLbs: number | null) {
-  const userId = await getUserId();
-  const { data: setRow } = await db().from("session_sets").select("session_id").eq("id", id).single();
-  if (!setRow) return;
-  const { data: session } = await db().from("workout_sessions").select("user_id").eq("id", setRow.session_id).single();
-  if ((session as { user_id: string } | null)?.user_id !== userId) return;
-  await db().from("session_sets").update({ reps, weight_lbs: weightLbs }).eq("id", id);
+  try {
+    const userId = await getUserId();
+    const { data: setRow } = await db().from("session_sets").select("session_id").eq("id", id).single();
+    if (!setRow) return;
+    const { data: session } = await db().from("workout_sessions").select("user_id").eq("id", setRow.session_id).single();
+    if ((session as { user_id: string } | null)?.user_id !== userId) return;
+    await db().from("session_sets").update({ reps, weight_lbs: weightLbs }).eq("id", id);
+  } catch { /* non-critical */ }
 }
 
 export async function deleteSetAction(id: string) {
-  const userId = await getUserId();
-  const { data: setRow } = await db().from("session_sets").select("session_id").eq("id", id).single();
-  if (!setRow) return;
-  const { data: session } = await db().from("workout_sessions").select("user_id").eq("id", setRow.session_id).single();
-  if ((session as { user_id: string } | null)?.user_id !== userId) return;
-  await db().from("session_sets").delete().eq("id", id);
+  try {
+    const userId = await getUserId();
+    const { data: setRow } = await db().from("session_sets").select("session_id").eq("id", id).single();
+    if (!setRow) return;
+    const { data: session } = await db().from("workout_sessions").select("user_id").eq("id", setRow.session_id).single();
+    if ((session as { user_id: string } | null)?.user_id !== userId) return;
+    await db().from("session_sets").delete().eq("id", id);
+  } catch { /* non-critical */ }
 }
 
 // ── TEMPLATES ─────────────────────────────────────────────────────────────────
