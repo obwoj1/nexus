@@ -58,6 +58,8 @@ export function LogSection({
   const [nameEdit, setNameEdit] = useState(false);
   const [editedName, setEditedName] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [elapsed, setElapsed] = useState(0); // seconds since session start
+  const startedAtRef = useRef<number>(Date.now());
 
   const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -73,6 +75,28 @@ export function LogSection({
     document.addEventListener("mousedown", onClickOutside);
     return () => { document.removeEventListener("keydown", onKey); document.removeEventListener("mousedown", onClickOutside); };
   }, [showPicker]);
+
+  useEffect(() => {
+    if (!session) return;
+    startedAtRef.current = Date.now();
+    setElapsed(0);
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - startedAtRef.current) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [session?.id]);
+
+  const elapsedLabel = (() => {
+    const h = Math.floor(elapsed / 3600);
+    const m = Math.floor((elapsed % 3600) / 60);
+    const s = elapsed % 60;
+    return h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+  })();
+
+  function finishWorkout() {
+    if (!session) return;
+    const mins = Math.round(elapsed / 60) || 1;
+    startTransition(() => updateSessionAction(session.id, { duration_minutes: mins }));
+    setSession((prev) => prev ? { ...prev, duration_minutes: mins } : prev);
+  }
 
   const exerciseGroups = useMemo(() => groupByExercise(session?.sets ?? []), [session?.sets]);
   const setExIds = useMemo(() => new Set(exerciseGroups.map((g) => g.exercise.id)), [exerciseGroups]);
@@ -273,19 +297,34 @@ export function LogSection({
           <Trash2 className="w-3.5 h-3.5" style={{ color: "rgba(248,113,113,0.5)" }} />
         </button>
       </div>
-      <div className="flex items-center gap-3 mb-8">
-        <p className="text-xs" style={{ color: "rgba(245,240,232,0.35)" }}>{todayLabel}</p>
-        {totalSets > 0 && (
-          <>
-            <span style={{ color: "rgba(245,240,232,0.15)" }}>·</span>
-            <p className="text-xs" style={{ color: "rgba(245,240,232,0.35)" }}>{totalSets} sets</p>
-            {totalVolume > 0 && (
-              <>
-                <span style={{ color: "rgba(245,240,232,0.15)" }}>·</span>
-                <p className="text-xs" style={{ color: "rgba(245,240,232,0.35)" }}>{totalVolume.toLocaleString()} lbs</p>
-              </>
-            )}
-          </>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3 flex-wrap">
+          <p className="text-xs" style={{ color: "rgba(245,240,232,0.35)" }}>{todayLabel}</p>
+          <span style={{ color: "rgba(245,240,232,0.15)" }}>·</span>
+          <p className="text-xs font-mono" style={{ color: "rgba(200,144,10,0.7)" }}>{elapsedLabel}</p>
+          {totalSets > 0 && (
+            <>
+              <span style={{ color: "rgba(245,240,232,0.15)" }}>·</span>
+              <p className="text-xs" style={{ color: "rgba(245,240,232,0.35)" }}>{totalSets} sets</p>
+              {totalVolume > 0 && (
+                <>
+                  <span style={{ color: "rgba(245,240,232,0.15)" }}>·</span>
+                  <p className="text-xs" style={{ color: "rgba(245,240,232,0.35)" }}>{totalVolume.toLocaleString()} lbs</p>
+                </>
+              )}
+            </>
+          )}
+        </div>
+        {session.duration_minutes ? (
+          <p className="text-xs px-3 py-1 rounded-lg" style={{ background: "rgba(74,222,128,0.08)", color: "rgba(74,222,128,0.7)", border: "1px solid rgba(74,222,128,0.15)" }}>
+            Finished · {session.duration_minutes}m
+          </p>
+        ) : (
+          <button onClick={finishWorkout} disabled={isPending}
+            className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all disabled:opacity-40"
+            style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", color: "rgba(74,222,128,0.8)" }}>
+            Finish
+          </button>
         )}
       </div>
 
