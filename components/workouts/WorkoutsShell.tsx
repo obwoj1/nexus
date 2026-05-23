@@ -1,15 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Dumbbell, History, BookOpen, TrendingUp, BarChart2, Camera } from "lucide-react";
+import { Dumbbell, History, BookOpen, TrendingUp, BarChart2, Camera, Scale } from "lucide-react";
 import { LogSection } from "./LogSection";
 import { HistorySection } from "./HistorySection";
 import { TemplatesSection } from "./TemplatesSection";
 import { ProgressSection } from "./ProgressSection";
 import { OverviewSection } from "./OverviewSection";
 import { PhotosSection } from "./PhotosSection";
+import { BodyMetricsSection } from "./BodyMetricsSection";
 
-type Section = "overview" | "log" | "history" | "templates" | "progress" | "photos";
+type Section = "overview" | "log" | "history" | "templates" | "progress" | "photos" | "metrics";
 
 const NAV: { key: Section; label: string; icon: React.ReactNode }[] = [
   { key: "overview",   label: "Overview",   icon: <BarChart2 className="w-4 h-4" /> },
@@ -18,6 +19,7 @@ const NAV: { key: Section; label: string; icon: React.ReactNode }[] = [
   { key: "templates",  label: "Templates",  icon: <BookOpen className="w-4 h-4" /> },
   { key: "progress",   label: "Progress",   icon: <TrendingUp className="w-4 h-4" /> },
   { key: "photos",     label: "Photos",     icon: <Camera className="w-4 h-4" /> },
+  { key: "metrics",    label: "Metrics",    icon: <Scale className="w-4 h-4" /> },
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -63,6 +65,7 @@ export function WorkoutsShell(props: any) {
         {active === "templates" && <TemplatesSection templates={props.templates} exercises={props.exercises} />}
         {active === "progress"  && <ProgressSection  exercises={props.exercises} />}
         {active === "photos"    && <PhotosSection    photos={props.photos} today={props.today} />}
+        {active === "metrics"   && <BodyMetricsSection metrics={props.bodyMetrics ?? []} today={props.today} />}
       </div>
     </div>
   );
