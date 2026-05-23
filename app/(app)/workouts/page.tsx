@@ -18,8 +18,9 @@ export default async function WorkoutsPage() {
     return d.toISOString().split("T")[0];
   })();
 
-  const [exercisesRes, todaySessionRes, recentSessionsRes, templatesRes, rawPhotos] = await Promise.all([
+  const [exercisesRes, customExercisesRes, todaySessionRes, recentSessionsRes, templatesRes, rawPhotos] = await Promise.all([
     admin.from("exercises").select("*").order("muscle_group").order("name"),
+    admin.from("custom_exercises").select("*").eq("user_id", user.id).order("name"),
     admin
       .from("workout_sessions")
       .select(`id, name, date, duration_minutes, notes,
@@ -63,9 +64,14 @@ export default async function WorkoutsPage() {
       )
     : [];
 
+  const allExercises = [
+    ...(exercisesRes.data ?? []),
+    ...(customExercisesRes.data ?? []),
+  ];
+
   return (
     <WorkoutsShell
-      exercises={exercisesRes.data ?? []}
+      exercises={allExercises}
       todaySession={todaySessionRes.data ?? null}
       recentSessions={recentSessionsRes.data ?? []}
       templates={templatesRes.data ?? []}
