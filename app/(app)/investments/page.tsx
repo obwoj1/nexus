@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { InvestmentsShell } from "@/components/investments/InvestmentsShell";
-import type { Holding } from "@/app/actions/investments";
+import type { Holding } from "@/lib/investments";
 
 export const metadata = { title: "Investments — Nexus" };
 

@@ -3,10 +3,8 @@
 import { useState, useEffect, useTransition } from "react";
 import { Plus, Trash2, RefreshCw, TrendingUp } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-import {
-  addHoldingAction, deleteHoldingAction, fetchPricesAction,
-  type Holding, type PriceData,
-} from "@/app/actions/investments";
+import { addHoldingAction, deleteHoldingAction, fetchPricesAction } from "@/app/actions/investments";
+import type { Holding, PriceData } from "@/lib/investments";
 
 const COLORS = [
   "#C8900A", "#4ADE80", "#60A5FA", "#F87171",
