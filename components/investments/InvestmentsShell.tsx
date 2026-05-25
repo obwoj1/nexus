@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef, useTransition } from "react";
-import { Plus, Trash2, RefreshCw, TrendingUp, Upload, Search, X, Link, Unlink } from "lucide-react";
+import { Plus, Trash2, RefreshCw, TrendingUp, Upload, Search, X } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import {
   addHoldingAction, deleteHoldingAction, fetchPricesAction,
-  searchSymbolsAction, saveRobinhoodTokenAction,
-  disconnectRobinhoodAction, syncRobinhoodAction,
+  searchSymbolsAction,
 } from "@/app/actions/investments";
 import { CRYPTO_IDS, type Holding, type PriceData, type SearchResult } from "@/lib/investments";
 
@@ -61,24 +60,15 @@ function parseRobinhoodCSV(text: string): ParsedCSVHolding[] {
 
 interface Props {
   initialHoldings: Holding[];
-  rhConnected: boolean;
 }
 
-export function InvestmentsShell({ initialHoldings, rhConnected: initialRhConnected }: Props) {
+export function InvestmentsShell({ initialHoldings }: Props) {
   const [holdings, setHoldings]           = useState(initialHoldings);
   const [prices, setPrices]               = useState<Record<string, PriceData>>({});
   const [initialLoading, setInitialLoading] = useState(true);   // skeletons — first load only
   const [updatedAt, setUpdatedAt]         = useState<Date | null>(null);
   const [isPending, startTransition]      = useTransition();
   const holdingsRef                       = useRef(initialHoldings); // stale-closure fix
-
-  // Robinhood
-  const [rhConnected, setRhConnected]     = useState(initialRhConnected);
-  const [showConnect, setShowConnect]     = useState(false);
-  const [rhToken, setRhToken]             = useState("");
-  const [rhError, setRhError]             = useState("");
-  const [syncMsg, setSyncMsg]             = useState("");
-  const [lastSynced, setLastSynced]       = useState<Date | null>(null);
 
   // Search / add
   const [showSearch, setShowSearch]       = useState(false);
@@ -109,39 +99,6 @@ export function InvestmentsShell({ initialHoldings, rhConnected: initialRhConnec
     setPrices(data);
     setUpdatedAt(new Date());
     if (isFirst) setInitialLoading(false);
-  }
-
-  // ── Robinhood ────────────────────────────────────────────────────────────
-  function handleConnectRh() {
-    if (!rhToken.trim()) return;
-    setRhError("");
-    startTransition(async () => {
-      const res = await saveRobinhoodTokenAction(rhToken.trim());
-      if ("error" in res) { setRhError(res.error ?? "Unknown error"); return; }
-      setRhConnected(true);
-      setShowConnect(false);
-      setRhToken("");
-      void handleSyncRh();
-    });
-  }
-
-  function handleDisconnectRh() {
-    startTransition(async () => {
-      await disconnectRobinhoodAction();
-      setRhConnected(false);
-    });
-  }
-
-  async function handleSyncRh() {
-    setSyncMsg("Syncing…");
-    const res = await syncRobinhoodAction();
-    if ("error" in res) { setSyncMsg(res.error); setTimeout(() => setSyncMsg(""), 4000); return; }
-    setHoldings(res.holdings);
-    holdingsRef.current = res.holdings;
-    setLastSynced(new Date());
-    setSyncMsg(`Synced ${res.holdings.filter(h => h.asset_type === "stock").length} positions`);
-    setTimeout(() => setSyncMsg(""), 3000);
-    void loadPrices(res.holdings, false);
   }
 
   // ── Search ───────────────────────────────────────────────────────────────
@@ -258,106 +215,6 @@ export function InvestmentsShell({ initialHoldings, rhConnected: initialRhConnec
           </button>
         </div>
       </div>
-
-      {/* ── Robinhood connect banner ── */}
-      {!rhConnected && !showConnect && (
-        <button onClick={() => setShowConnect(true)}
-          className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl mb-6 text-left transition-all hover:opacity-90"
-          style={{ background: "rgba(200,144,10,0.06)", border: "1px solid rgba(200,144,10,0.2)" }}>
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-            style={{ background: "rgba(200,144,10,0.15)" }}>
-            <Link className="w-3.5 h-3.5" style={{ color: "#C8900A" }} />
-          </div>
-          <div className="flex-1">
-            <p className="text-xs font-semibold" style={{ color: "#C8900A" }}>Connect Robinhood</p>
-            <p className="text-[10px] mt-0.5" style={{ color: "rgba(245,240,232,0.35)" }}>
-              Sync your real positions automatically — no manual entry needed
-            </p>
-          </div>
-          <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "rgba(200,144,10,0.15)", color: "#C8900A" }}>
-            Connect →
-          </span>
-        </button>
-      )}
-
-      {/* ── Robinhood connect form ── */}
-      {!rhConnected && showConnect && (
-        <div className="mb-6 p-5 rounded-2xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,235,180,0.1)" }}>
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <p className="text-sm font-semibold" style={{ color: "#F5F0E8" }}>Connect Robinhood</p>
-              <p className="text-xs mt-0.5" style={{ color: "rgba(245,240,232,0.4)" }}>Paste your Bearer token to sync positions automatically</p>
-            </div>
-            <button onClick={() => { setShowConnect(false); setRhError(""); }}>
-              <X className="w-4 h-4" style={{ color: "rgba(245,240,232,0.3)" }} />
-            </button>
-          </div>
-
-          {/* Step-by-step */}
-          <div className="mb-4 p-4 rounded-xl text-xs" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,235,180,0.06)" }}>
-            <p className="font-medium mb-2" style={{ color: "rgba(245,240,232,0.6)" }}>How to get your token:</p>
-            {[
-              "Open robinhood.com on desktop and log in",
-              "Press F12 (Mac: Cmd+Option+I) to open DevTools",
-              "Click the Network tab, then refresh the page",
-              "Click any request to api.robinhood.com",
-              "Under Request Headers, find Authorization",
-              "Copy everything after \"Bearer \" and paste below",
-            ].map((step, i) => (
-              <div key={i} className="flex items-start gap-2 mt-1.5">
-                <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 mt-0.5"
-                  style={{ background: "rgba(200,144,10,0.15)", color: "#C8900A" }}>{i + 1}</span>
-                <span style={{ color: "rgba(245,240,232,0.45)" }}>{step}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex gap-2">
-            <input
-              type="password"
-              value={rhToken}
-              onChange={e => setRhToken(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleConnectRh()}
-              placeholder="Paste token here…"
-              className="flex-1 bg-transparent text-xs outline-none px-3 py-2.5 rounded-xl"
-              style={{ color: "#F5F0E8", border: "1px solid rgba(255,235,180,0.12)" }}
-            />
-            <button onClick={handleConnectRh} disabled={isPending || !rhToken.trim()}
-              className="px-4 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-40"
-              style={{ background: "rgba(200,144,10,0.2)", color: "#C8900A" }}>
-              {isPending ? "Connecting…" : "Connect"}
-            </button>
-          </div>
-          {rhError && <p className="text-[10px] mt-2" style={{ color: "#F87171" }}>{rhError}</p>}
-        </div>
-      )}
-
-      {/* ── Robinhood connected bar ── */}
-      {rhConnected && (
-        <div className="flex items-center justify-between px-4 py-3 rounded-2xl mb-6"
-          style={{ background: "rgba(74,222,128,0.04)", border: "1px solid rgba(74,222,128,0.15)" }}>
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#4ADE80" }} />
-            <p className="text-xs font-medium" style={{ color: "#4ADE80" }}>
-              Robinhood connected
-              {lastSynced && <span style={{ color: "rgba(74,222,128,0.6)" }}> · synced {lastSynced.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
-            </p>
-            {syncMsg && <span className="text-[10px] ml-2" style={{ color: "rgba(245,240,232,0.4)" }}>{syncMsg}</span>}
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={() => void handleSyncRh()} disabled={isPending}
-              className="text-xs font-semibold disabled:opacity-40 transition-opacity"
-              style={{ color: "#C8900A" }}>
-              Sync now
-            </button>
-            <button onClick={handleDisconnectRh} disabled={isPending}
-              className="flex items-center gap-1 text-[10px] disabled:opacity-40"
-              style={{ color: "rgba(248,113,113,0.5)" }}>
-              <Unlink className="w-3 h-3" /> Disconnect
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ── CSV preview ── */}
       {csvRows !== null && (
@@ -514,7 +371,7 @@ export function InvestmentsShell({ initialHoldings, rhConnected: initialRhConnec
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <TrendingUp className="w-10 h-10" style={{ color: "rgba(245,240,232,0.07)" }} />
           <p className="text-sm" style={{ color: "rgba(245,240,232,0.25)" }}>
-            {rhConnected ? "Hit \"Sync now\" to pull your Robinhood positions" : "Connect Robinhood or search for holdings manually"}
+            {"Search for a stock or crypto above, or import a Robinhood CSV to get started"}
           </p>
         </div>
       )}
