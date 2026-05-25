@@ -21,7 +21,8 @@ Next.js 15 · TypeScript · Tailwind v4 · shadcn/ui · Supabase · Vercel · An
 | 4 | Tracking charts — recharts per section | ✅ Live |
 | 4 | Claudia AI — live data access, interactive chat, sessionStorage | ✅ Live |
 | 5 | Workouts — Log, History, Templates, Progress charts | ✅ Live |
-| 6 | Investments | 📋 Planned |
+| 5b | Wardrobe — Gemini Vision categorize, Ask Claudia stylist, Saved Fits | ✅ Live |
+| 6 | Investments — Holdings, Live prices (Finnhub + CoinGecko), CSV import, Gmail trade sync | ✅ Live |
 
 ## Setup
 
@@ -38,6 +39,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_APP_URL=
 ANTHROPIC_API_KEY=
+GEMINI_API_KEY=
+FINNHUB_API_KEY=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 ALLOWED_EMAIL=
 ```
 
