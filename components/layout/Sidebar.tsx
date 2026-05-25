@@ -89,16 +89,18 @@ export function Sidebar() {
         </nav>
 
         {/* Sign out */}
-        <div className="relative group">
-          <button onClick={handleSignOut}
-            className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 hover:bg-[rgba(248,113,113,0.08)]"
-            title="Sign out">
-            <LogOut className="w-[17px] h-[17px] transition-colors duration-200 group-hover:text-red-400"
-              style={{ color: "rgba(245,240,232,0.4)" }} />
-          </button>
-          <div className="absolute left-[52px] top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50"
-            style={{ background: "#1E1A15", border: "1px solid rgba(248,113,113,0.2)", color: "#F87171" }}>
-            Sign out
+        <div className="mb-1 pt-3 w-full flex flex-col items-center" style={{ borderTop: "1px solid rgba(255,235,180,0.07)" }}>
+          <div className="relative group">
+            <button onClick={handleSignOut}
+              className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 hover:bg-[rgba(248,113,113,0.15)]"
+              style={{ background: "rgba(248,113,113,0.07)", border: "1px solid rgba(248,113,113,0.18)" }}>
+              <LogOut className="w-[17px] h-[17px] transition-colors duration-200"
+                style={{ color: "rgba(248,113,113,0.75)" }} />
+            </button>
+            <div className="absolute left-[52px] top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50"
+              style={{ background: "#1E1A15", border: "1px solid rgba(248,113,113,0.25)", color: "#F87171" }}>
+              Sign out
+            </div>
           </div>
         </div>
       </aside>
