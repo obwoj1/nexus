@@ -188,79 +188,93 @@ function decodeBase64Url(data: string): string {
   return Buffer.from(base64, "base64").toString("utf-8");
 }
 
-function extractBodyText(payload: Record<string, unknown>): string {
-  // Single-part body
-  const body = payload.body as { data?: string } | undefined;
-  if (body?.data) return decodeBase64Url(body.data);
+type MimePart = {
+  mimeType?: string;
+  body?: { data?: string };
+  parts?: MimePart[];
+};
 
-  // Multipart — prefer text/plain, fall back to text/html
-  const parts = payload.parts as Array<{ mimeType: string; body?: { data?: string }; parts?: unknown[] }> | undefined;
-  if (!parts) return "";
+function extractBodyText(payload: MimePart, depth = 0): string {
+  if (depth > 6) return "";
 
-  for (const part of parts) {
-    if (part.mimeType === "text/plain" && part.body?.data) {
-      return decodeBase64Url(part.body.data);
+  // Direct body data
+  if (payload.body?.data) {
+    const text = decodeBase64Url(payload.body.data);
+    if (payload.mimeType === "text/html") {
+      return text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    }
+    return text;
+  }
+
+  if (!payload.parts) return "";
+
+  // Prefer text/plain at any nesting level
+  for (const part of payload.parts) {
+    if (part.mimeType === "text/plain") {
+      const result = extractBodyText(part, depth + 1);
+      if (result) return result;
     }
   }
-  for (const part of parts) {
-    if (part.mimeType === "text/html" && part.body?.data) {
-      // Strip HTML tags for plain-text matching
-      return decodeBase64Url(part.body.data).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+  // Recurse into multipart/* containers
+  for (const part of payload.parts) {
+    if (part.mimeType?.startsWith("multipart/")) {
+      const result = extractBodyText(part, depth + 1);
+      if (result) return result;
+    }
+  }
+  // Fall back to text/html
+  for (const part of payload.parts) {
+    if (part.mimeType === "text/html") {
+      const result = extractBodyText(part, depth + 1);
+      if (result) return result;
     }
   }
   return "";
 }
 
-const BUY_PATTERNS = [
-  // "You bought 5 shares of Apple (AAPL) at $150.00"
-  /bought?\s+([\d,]+(?:\.\d+)?)\s+shares?\s+of\s+(.*?)\s*\(([A-Z]{1,5})\)\s+at\s+\$?([\d,]+(?:\.\d+)?)/i,
-  // "Bought 5 AAPL @ $150.00"
-  /bought?\s+([\d,]+(?:\.\d+)?)\s+([A-Z]{1,5})\s+@\s+\$?([\d,]+(?:\.\d+)?)/i,
-  // "Market buy · 5 shares · AAPL · $150.00/share"
-  /market\s+buy\W+([\d,]+(?:\.\d+)?)\s+shares?\W+([A-Z]{1,5})\W+\$?([\d,]+(?:\.\d+)?)/i,
+// Each entry: [action, qtyGroup, tickerGroup, nameGroup (or -1), priceGroup]
+type PatternEntry = { action: "buy" | "sell"; re: RegExp; qi: number; ti: number; ni: number; pi: number };
+
+const TRADE_PATTERNS: PatternEntry[] = [
+  // "You bought 5 shares of Apple (AAPL) at $150.00 per share"
+  { action: "buy",  re: /bought?\s+([\d,]+(?:\.\d+)?)\s+shares?\s+of\s+(.*?)\s*\(([A-Z]{1,6})\).*?at\s+\$?([\d,]+(?:\.\d+)?)/i,  qi:1, ni:2, ti:3, pi:4 },
+  // "You sold 5 shares of Apple (AAPL) at $150.00"
+  { action: "sell", re: /sold?\s+([\d,]+(?:\.\d+)?)\s+shares?\s+of\s+(.*?)\s*\(([A-Z]{1,6})\).*?at\s+\$?([\d,]+(?:\.\d+)?)/i,    qi:1, ni:2, ti:3, pi:4 },
+  // "bought 5 AAPL @ $150.00" or "sold 5 AAPL @ $150"
+  { action: "buy",  re: /bought?\s+([\d,]+(?:\.\d+)?)\s+([A-Z]{1,6})\s+(?:shares?\s+)?@\s+\$?([\d,]+(?:\.\d+)?)/i, qi:1, ti:2, ni:-1, pi:3 },
+  { action: "sell", re: /sold?\s+([\d,]+(?:\.\d+)?)\s+([A-Z]{1,6})\s+(?:shares?\s+)?@\s+\$?([\d,]+(?:\.\d+)?)/i,   qi:1, ti:2, ni:-1, pi:3 },
+  // "Order Executed: Buy 5 AAPL at $150" (subject line format)
+  { action: "buy",  re: /buy\s+([\d,]+(?:\.\d+)?)\s+([A-Z]{1,6})\s+at\s+\$?([\d,]+(?:\.\d+)?)/i,  qi:1, ti:2, ni:-1, pi:3 },
+  { action: "sell", re: /sell\s+([\d,]+(?:\.\d+)?)\s+([A-Z]{1,6})\s+at\s+\$?([\d,]+(?:\.\d+)?)/i, qi:1, ti:2, ni:-1, pi:3 },
+  // "Market Buy · 5 shares · AAPL · avg $150.00"
+  { action: "buy",  re: /market\s+buy\W+([\d,]+(?:\.\d+)?)\s+(?:shares?\W+)?([A-Z]{1,6})\W+.*?\$?([\d,]+(?:\.\d+)?)/i,  qi:1, ti:2, ni:-1, pi:3 },
+  { action: "sell", re: /market\s+sell\W+([\d,]+(?:\.\d+)?)\s+(?:shares?\W+)?([A-Z]{1,6})\W+.*?\$?([\d,]+(?:\.\d+)?)/i, qi:1, ti:2, ni:-1, pi:3 },
+  // "Your order for 5 shares of AAPL (Apple) was filled at $150"
+  { action: "buy",  re: /order.*?buy.*?([\d,]+(?:\.\d+)?)\s+(?:shares?\s+of\s+)?([A-Z]{1,6}).*?filled.*?\$?([\d,]+(?:\.\d+)?)/i,  qi:1, ti:2, ni:-1, pi:3 },
+  { action: "sell", re: /order.*?sell.*?([\d,]+(?:\.\d+)?)\s+(?:shares?\s+of\s+)?([A-Z]{1,6}).*?filled.*?\$?([\d,]+(?:\.\d+)?)/i, qi:1, ti:2, ni:-1, pi:3 },
 ];
 
-const SELL_PATTERNS = [
-  /sold?\s+([\d,]+(?:\.\d+)?)\s+shares?\s+of\s+(.*?)\s*\(([A-Z]{1,5})\)\s+at\s+\$?([\d,]+(?:\.\d+)?)/i,
-  /sold?\s+([\d,]+(?:\.\d+)?)\s+([A-Z]{1,5})\s+@\s+\$?([\d,]+(?:\.\d+)?)/i,
-  /market\s+sell\W+([\d,]+(?:\.\d+)?)\s+shares?\W+([A-Z]{1,5})\W+\$?([\d,]+(?:\.\d+)?)/i,
-];
-
-function parseTrade(text: string, date: string): RobinhoodTrade | null {
+function parseTrade(subject: string, snippet: string, body: string, date: string): RobinhoodTrade | null {
   const clean = (s: string) => parseFloat(s.replace(/,/g, ""));
+  // Try subject first (often most parseable), then snippet, then full body
+  const sources = [subject, snippet, body].filter(Boolean);
 
-  for (const pat of BUY_PATTERNS) {
-    const m = text.match(pat);
-    if (m) {
-      // Pattern with company name: groups 1=qty, 2=name, 3=ticker, 4=price
-      // Pattern without name:      groups 1=qty, 2=ticker, 3=price
-      const hasName = pat.source.includes("shares?\\s+of");
+  for (const { action, re, qi, ti, ni, pi } of TRADE_PATTERNS) {
+    for (const src of sources) {
+      const m = src.match(re);
+      if (!m) continue;
+      const ticker = m[ti]?.toUpperCase();
+      if (!ticker || ticker.length > 6) continue;
       return {
-        action: "buy",
-        ticker: hasName ? m[3].toUpperCase() : m[2].toUpperCase(),
-        name:   hasName ? m[2].trim() : m[2].toUpperCase(),
-        quantity: clean(m[1]),
-        price:    hasName ? clean(m[4]) : clean(m[3]),
+        action,
+        ticker,
+        name:     ni > 0 ? m[ni].trim() : ticker,
+        quantity: clean(m[qi]),
+        price:    clean(m[pi]),
         date,
       };
     }
   }
-
-  for (const pat of SELL_PATTERNS) {
-    const m = text.match(pat);
-    if (m) {
-      const hasName = pat.source.includes("shares?\\s+of");
-      return {
-        action: "sell",
-        ticker: hasName ? m[3].toUpperCase() : m[2].toUpperCase(),
-        name:   hasName ? m[2].trim() : m[2].toUpperCase(),
-        quantity: clean(m[1]),
-        price:    hasName ? clean(m[4]) : clean(m[3]),
-        date,
-      };
-    }
-  }
-
   return null;
 }
 
@@ -290,23 +304,24 @@ export function aggregateTrades(trades: RobinhoodTrade[]): ParsedPosition[] {
     }));
 }
 
-interface GFullMessagePayload {
-  body?: { data?: string };
-  parts?: Array<{ mimeType: string; body?: { data?: string }; parts?: unknown[] }>;
-  headers?: GMessageHeader[];
-}
-
 interface GFullMessage {
   id: string;
-  payload?: GFullMessagePayload;
+  snippet?: string;
+  payload?: MimePart & { headers?: GMessageHeader[] };
 }
 
-export async function scanRobinhoodTrades(userId: string, maxEmails = 100): Promise<RobinhoodTrade[]> {
+export interface ScanResult {
+  trades: RobinhoodTrade[];
+  emailsFound: number;
+}
+
+export async function scanRobinhoodTrades(userId: string, maxEmails = 150): Promise<ScanResult> {
   const token = await getValidGoogleToken(userId);
 
   const listUrl = new URL("https://www.googleapis.com/gmail/v1/users/me/messages");
   listUrl.searchParams.set("maxResults", String(maxEmails));
-  listUrl.searchParams.set("q", "from:robinhood.com");
+  // Cast a wide net — any email from robinhood domain
+  listUrl.searchParams.set("q", "from:robinhood.com OR from:robinhood OR (robinhood order)");
 
   const listRes = await fetch(listUrl.toString(), {
     headers: { Authorization: `Bearer ${token}` },
@@ -316,10 +331,11 @@ export async function scanRobinhoodTrades(userId: string, maxEmails = 100): Prom
   if (!listRes.ok) throw new Error("GMAIL_LIST_FAILED");
 
   const listData: GMessageListResponse = await listRes.json();
-  if (!listData.messages?.length) return [];
+  const emailsFound = listData.messages?.length ?? 0;
+  if (!emailsFound) return { trades: [], emailsFound: 0 };
 
   const trades = await Promise.all(
-    listData.messages.map(async (msg) => {
+    listData.messages!.map(async (msg) => {
       try {
         const res = await fetch(
           `https://www.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
@@ -330,16 +346,22 @@ export async function scanRobinhoodTrades(userId: string, maxEmails = 100): Prom
         if (!detail.payload) return null;
 
         const headers = detail.payload.headers ?? [];
-        const date = headers.find((h) => h.name === "Date")?.value ?? "";
-        const text = extractBodyText(detail.payload as Record<string, unknown>);
-        return parseTrade(text, date);
+        const get = (name: string) => headers.find((h) => h.name === name)?.value ?? "";
+        const subject = get("Subject");
+        const date    = get("Date");
+        const snippet = detail.snippet ?? "";
+        const body    = extractBodyText(detail.payload);
+        return parseTrade(subject, snippet, body, date);
       } catch {
         return null;
       }
     })
   );
 
-  return trades.filter((t): t is RobinhoodTrade => t !== null);
+  return {
+    trades: trades.filter((t): t is RobinhoodTrade => t !== null),
+    emailsFound,
+  };
 }
 
 export async function batchMarkOldAsRead(userId: string, daysOld = 30): Promise<number> {

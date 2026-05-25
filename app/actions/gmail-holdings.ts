@@ -13,9 +13,12 @@ export async function scanGmailHoldingsAction(): Promise<
   if (!user) return { error: "Unauthorized" };
 
   try {
-    const trades = await scanRobinhoodTrades(user.id, 100);
+    const { trades, emailsFound } = await scanRobinhoodTrades(user.id, 150);
+    if (emailsFound === 0) {
+      return { error: "No Robinhood emails found in this Gmail account. Make sure the account that receives Robinhood emails is the one connected to Nexus." };
+    }
     if (trades.length === 0) {
-      return { error: "No Robinhood trade emails found in your Gmail. Make sure your Robinhood account uses this Gmail address." };
+      return { error: `Found ${emailsFound} Robinhood email${emailsFound !== 1 ? "s" : ""} but couldn't parse any trade confirmations. The format may have changed — try CSV import instead.` };
     }
     const positions = aggregateTrades(trades);
     return { positions, emailsScanned: trades.length };
