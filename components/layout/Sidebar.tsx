@@ -24,7 +24,7 @@ const navItems = [
   { icon: Activity,        label: "Tracking",  href: "/tracking",  live: true },
   { icon: Dumbbell,        label: "Workouts",   href: "/workouts",    live: true },
   { icon: Shirt,           label: "Wardrobe",   href: "/wardrobe",    live: true },
-  { icon: TrendingUp,      label: "Investments", href: "/investments", live: false },
+  { icon: TrendingUp,      label: "Investments", href: "/investments", live: true },
 ];
 
 export function Sidebar() {
