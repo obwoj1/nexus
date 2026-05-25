@@ -232,49 +232,64 @@ function extractBodyText(payload: MimePart, depth = 0): string {
   return "";
 }
 
-// Each entry: [action, qtyGroup, tickerGroup, nameGroup (or -1), priceGroup]
-type PatternEntry = { action: "buy" | "sell"; re: RegExp; qi: number; ti: number; ni: number; pi: number };
-
-const TRADE_PATTERNS: PatternEntry[] = [
-  // "You bought 5 shares of Apple (AAPL) at $150.00 per share"
-  { action: "buy",  re: /bought?\s+([\d,]+(?:\.\d+)?)\s+shares?\s+of\s+(.*?)\s*\(([A-Z]{1,6})\).*?at\s+\$?([\d,]+(?:\.\d+)?)/i,  qi:1, ni:2, ti:3, pi:4 },
-  // "You sold 5 shares of Apple (AAPL) at $150.00"
-  { action: "sell", re: /sold?\s+([\d,]+(?:\.\d+)?)\s+shares?\s+of\s+(.*?)\s*\(([A-Z]{1,6})\).*?at\s+\$?([\d,]+(?:\.\d+)?)/i,    qi:1, ni:2, ti:3, pi:4 },
-  // "bought 5 AAPL @ $150.00" or "sold 5 AAPL @ $150"
-  { action: "buy",  re: /bought?\s+([\d,]+(?:\.\d+)?)\s+([A-Z]{1,6})\s+(?:shares?\s+)?@\s+\$?([\d,]+(?:\.\d+)?)/i, qi:1, ti:2, ni:-1, pi:3 },
-  { action: "sell", re: /sold?\s+([\d,]+(?:\.\d+)?)\s+([A-Z]{1,6})\s+(?:shares?\s+)?@\s+\$?([\d,]+(?:\.\d+)?)/i,   qi:1, ti:2, ni:-1, pi:3 },
-  // "Order Executed: Buy 5 AAPL at $150" (subject line format)
-  { action: "buy",  re: /buy\s+([\d,]+(?:\.\d+)?)\s+([A-Z]{1,6})\s+at\s+\$?([\d,]+(?:\.\d+)?)/i,  qi:1, ti:2, ni:-1, pi:3 },
-  { action: "sell", re: /sell\s+([\d,]+(?:\.\d+)?)\s+([A-Z]{1,6})\s+at\s+\$?([\d,]+(?:\.\d+)?)/i, qi:1, ti:2, ni:-1, pi:3 },
-  // "Market Buy · 5 shares · AAPL · avg $150.00"
-  { action: "buy",  re: /market\s+buy\W+([\d,]+(?:\.\d+)?)\s+(?:shares?\W+)?([A-Z]{1,6})\W+.*?\$?([\d,]+(?:\.\d+)?)/i,  qi:1, ti:2, ni:-1, pi:3 },
-  { action: "sell", re: /market\s+sell\W+([\d,]+(?:\.\d+)?)\s+(?:shares?\W+)?([A-Z]{1,6})\W+.*?\$?([\d,]+(?:\.\d+)?)/i, qi:1, ti:2, ni:-1, pi:3 },
-  // "Your order for 5 shares of AAPL (Apple) was filled at $150"
-  { action: "buy",  re: /order.*?buy.*?([\d,]+(?:\.\d+)?)\s+(?:shares?\s+of\s+)?([A-Z]{1,6}).*?filled.*?\$?([\d,]+(?:\.\d+)?)/i,  qi:1, ti:2, ni:-1, pi:3 },
-  { action: "sell", re: /order.*?sell.*?([\d,]+(?:\.\d+)?)\s+(?:shares?\s+of\s+)?([A-Z]{1,6}).*?filled.*?\$?([\d,]+(?:\.\d+)?)/i, qi:1, ti:2, ni:-1, pi:3 },
-];
-
 function parseTrade(subject: string, snippet: string, body: string, date: string): RobinhoodTrade | null {
+  // Flatten all sources into one searchable string
+  const full = [body, snippet, subject].filter(Boolean).join(" ").replace(/\s+/g, " ");
   const clean = (s: string) => parseFloat(s.replace(/,/g, ""));
-  // Try subject first (often most parseable), then snippet, then full body
-  const sources = [subject, snippet, body].filter(Boolean);
 
-  for (const { action, re, qi, ti, ni, pi } of TRADE_PATTERNS) {
-    for (const src of sources) {
-      const m = src.match(re);
-      if (!m) continue;
-      const ticker = m[ti]?.toUpperCase();
-      if (!ticker || ticker.length > 6) continue;
-      return {
-        action,
-        ticker,
-        name:     ni > 0 ? m[ni].trim() : ticker,
-        quantity: clean(m[qi]),
-        price:    clean(m[pi]),
-        date,
-      };
-    }
+  // ── Robinhood confirmed format (2025–2026) ──────────────────────────────
+  // "Your order to buy $50.35 of BUD through your... You paid $X for 0.614999 shares, at an average price of $81.87 per share"
+  const rhExecuted = full.match(
+    /order to (buy|sell)\s+\$[\d.,]+\s+of\s+([A-Z]{1,6})\b.*?for\s+([\d.]+)\s+shares?,\s+at an average price of\s+\$?([\d.,]+)\s+per share/i
+  );
+  if (rhExecuted) {
+    return {
+      action:   rhExecuted[1].toLowerCase() === "buy" ? "buy" : "sell",
+      ticker:   rhExecuted[2].toUpperCase(),
+      name:     rhExecuted[2].toUpperCase(),
+      quantity: clean(rhExecuted[3]),
+      price:    clean(rhExecuted[4]),
+      date,
+    };
   }
+
+  // ── Robinhood crypto format ─────────────────────────────────────────────
+  // "Your order to buy $50 of BTC... You received 0.00123 BTC at an average price of $40,000"
+  const rhCrypto = full.match(
+    /order to (buy|sell)\s+\$[\d.,]+\s+of\s+([A-Z]{1,6})\b.*?received\s+([\d.]+)\s+[A-Z]+.*?average price of\s+\$?([\d.,]+)/i
+  );
+  if (rhCrypto) {
+    return {
+      action:   rhCrypto[1].toLowerCase() === "buy" ? "buy" : "sell",
+      ticker:   rhCrypto[2].toUpperCase(),
+      name:     rhCrypto[2].toUpperCase(),
+      quantity: clean(rhCrypto[3]),
+      price:    clean(rhCrypto[4]),
+      date,
+    };
+  }
+
+  // ── Older / fallback formats ────────────────────────────────────────────
+  const fallbacks: Array<{ action: "buy" | "sell"; re: RegExp }> = [
+    // "You bought 0.61 shares of BUD at $81.87"
+    { action: "buy",  re: /bought?\s+([\d.,]+)\s+shares?\s+of\s+(\S+?)\s+at\s+\$?([\d.,]+)/i },
+    { action: "sell", re: /sold?\s+([\d.,]+)\s+shares?\s+of\s+(\S+?)\s+at\s+\$?([\d.,]+)/i },
+    // "bought 5 AAPL @ $150"
+    { action: "buy",  re: /bought?\s+([\d.,]+)\s+([A-Z]{1,6})\s+@\s+\$?([\d.,]+)/i },
+    { action: "sell", re: /sold?\s+([\d.,]+)\s+([A-Z]{1,6})\s+@\s+\$?([\d.,]+)/i },
+    // "Buy 5 AAPL at $150" (subject)
+    { action: "buy",  re: /\bbuy\s+([\d.,]+)\s+([A-Z]{1,6})\s+at\s+\$?([\d.,]+)/i },
+    { action: "sell", re: /\bsell\s+([\d.,]+)\s+([A-Z]{1,6})\s+at\s+\$?([\d.,]+)/i },
+  ];
+
+  for (const { action, re } of fallbacks) {
+    const m = full.match(re);
+    if (!m) continue;
+    const ticker = m[2].replace(/[^A-Z]/gi, "").toUpperCase();
+    if (!ticker || ticker.length > 6) continue;
+    return { action, ticker, name: ticker, quantity: clean(m[1]), price: clean(m[3]), date };
+  }
+
   return null;
 }
 
