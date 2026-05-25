@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Trash2, BookOpen } from "lucide-react";
-import { createReadingItemAction, updateReadingStatusAction, deleteReadingItemAction } from "@/app/actions/tracking";
+import { Plus, Trash2, BookOpen, Pencil, Check, X } from "lucide-react";
+import { createReadingItemAction, updateReadingStatusAction, updateReadingItemAction, deleteReadingItemAction } from "@/app/actions/tracking";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 
 interface ReadingItem {
@@ -21,6 +21,8 @@ export function ReadingSection({ reading: initial }: { reading: ReadingItem[] })
   const [isPending, startTransition] = useTransition();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: "", author: "", type: "book" as "book" | "article" });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ title: "", author: "" });
 
   function handleCreate() {
     if (!form.title.trim()) return;
@@ -41,6 +43,19 @@ export function ReadingSection({ reading: initial }: { reading: ReadingItem[] })
   function handleRating(id: string, rating: number) {
     setItems((prev) => prev.map((i) => i.id === id ? { ...i, rating } : i));
     startTransition(() => updateReadingStatusAction(id, "done", rating));
+  }
+
+  function startEdit(item: ReadingItem) {
+    setEditingId(item.id);
+    setEditForm({ title: item.title, author: item.author ?? "" });
+  }
+
+  function handleUpdate() {
+    if (!editingId || !editForm.title.trim()) return;
+    setItems((prev) => prev.map((i) => i.id === editingId ? { ...i, title: editForm.title.trim(), author: editForm.author || null } : i));
+    const id = editingId;
+    setEditingId(null);
+    startTransition(() => updateReadingItemAction(id, editForm.title.trim(), editForm.author));
   }
 
   function handleDelete(id: string) {
@@ -114,45 +129,77 @@ export function ReadingSection({ reading: initial }: { reading: ReadingItem[] })
                   </p>
                 </div>
                 <div className="flex flex-col gap-2">
-                  {col.map((item) => (
-                    <div key={item.id} className="group p-3 rounded-xl"
-                      style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,235,180,0.06)" }}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium leading-snug" style={{ color: "#F5F0E8" }}>{item.title}</p>
-                          {item.author && <p className="text-[10px] mt-0.5" style={{ color: "rgba(245,240,232,0.35)" }}>{item.author}</p>}
-                          <span className="text-[9px] uppercase tracking-wider"
-                            style={{ color: "rgba(245,240,232,0.2)" }}>{item.type}</span>
+                  {col.map((item) => {
+                    if (editingId === item.id) {
+                      return (
+                        <div key={item.id} className="p-3 rounded-xl" style={{ background: "rgba(200,144,10,0.05)", border: "1px solid rgba(200,144,10,0.2)" }}>
+                          <input autoFocus value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                            placeholder="Title…" className="w-full bg-transparent text-xs font-medium outline-none mb-1.5"
+                            style={{ color: "#F5F0E8" }} />
+                          <input value={editForm.author} onChange={(e) => setEditForm({ ...editForm, author: e.target.value })}
+                            placeholder="Author (optional)…" className="w-full bg-transparent text-[10px] outline-none mb-2"
+                            style={{ color: "rgba(245,240,232,0.5)" }} />
+                          <div className="flex gap-1.5">
+                            <button onClick={handleUpdate}
+                              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium"
+                              style={{ background: "rgba(200,144,10,0.2)", color: "#C8900A" }}>
+                              <Check className="w-2.5 h-2.5" /> Save
+                            </button>
+                            <button onClick={() => setEditingId(null)}
+                              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px]"
+                              style={{ color: "rgba(245,240,232,0.4)" }}>
+                              <X className="w-2.5 h-2.5" /> Cancel
+                            </button>
+                          </div>
                         </div>
-                        <button onClick={() => handleDelete(item.id)}
-                          className="opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10 rounded p-0.5">
-                          <Trash2 className="w-3 h-3" style={{ color: "rgba(248,113,113,0.5)" }} />
-                        </button>
-                      </div>
-                      {/* Status buttons */}
-                      <div className="flex gap-1 mt-2">
-                        {STATUSES.filter((s) => s.key !== key).map((s) => (
-                          <button key={s.key} onClick={() => handleStatus(item.id, s.key as "to-read" | "reading" | "done")}
-                            className="text-[9px] px-1.5 py-0.5 rounded-full transition-colors hover:opacity-80"
-                            style={{ background: "rgba(255,255,255,0.04)", color: "rgba(245,240,232,0.35)" }}>
-                            → {s.label}
-                          </button>
-                        ))}
-                      </div>
-                      {/* Rating for done items */}
-                      {key === "done" && (
-                        <div className="flex gap-0.5 mt-2">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <button key={star} onClick={() => handleRating(item.id, star)}
-                              className="text-sm transition-all hover:scale-110"
-                              style={{ color: (item.rating ?? 0) >= star ? "#C8900A" : "rgba(245,240,232,0.15)" }}>
-                              ★
+                      );
+                    }
+                    return (
+                      <div key={item.id} className="group p-3 rounded-xl"
+                        style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,235,180,0.06)" }}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium leading-snug" style={{ color: "#F5F0E8" }}>{item.title}</p>
+                            {item.author && <p className="text-[10px] mt-0.5" style={{ color: "rgba(245,240,232,0.35)" }}>{item.author}</p>}
+                            <span className="text-[9px] uppercase tracking-wider"
+                              style={{ color: "rgba(245,240,232,0.2)" }}>{item.type}</span>
+                          </div>
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                            <button onClick={() => startEdit(item)}
+                              className="rounded p-0.5 hover:bg-[rgba(200,144,10,0.1)]">
+                              <Pencil className="w-2.5 h-2.5" style={{ color: "rgba(200,144,10,0.6)" }} />
+                            </button>
+                            <button onClick={() => handleDelete(item.id)}
+                              className="rounded p-0.5 hover:bg-red-500/10">
+                              <Trash2 className="w-2.5 h-2.5" style={{ color: "rgba(248,113,113,0.5)" }} />
+                            </button>
+                          </div>
+                        </div>
+                        {/* Status buttons */}
+                        <div className="flex gap-1 mt-2">
+                          {STATUSES.filter((s) => s.key !== key).map((s) => (
+                            <button key={s.key} onClick={() => handleStatus(item.id, s.key as "to-read" | "reading" | "done")}
+                              className="text-[9px] px-1.5 py-0.5 rounded-full transition-colors hover:opacity-80"
+                              style={{ background: "rgba(255,255,255,0.04)", color: "rgba(245,240,232,0.35)" }}>
+                              → {s.label}
                             </button>
                           ))}
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        {/* Rating for done items */}
+                        {key === "done" && (
+                          <div className="flex gap-0.5 mt-2">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <button key={star} onClick={() => handleRating(item.id, star)}
+                                className="text-sm transition-all hover:scale-110"
+                                style={{ color: (item.rating ?? 0) >= star ? "#C8900A" : "rgba(245,240,232,0.15)" }}>
+                                ★
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
