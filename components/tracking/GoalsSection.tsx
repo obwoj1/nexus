@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Trash2, Target } from "lucide-react";
-import { createGoalAction, updateGoalProgressAction, deleteGoalAction } from "@/app/actions/tracking";
+import { Plus, Trash2, Target, Pencil, Check, X } from "lucide-react";
+import { createGoalAction, updateGoalProgressAction, updateGoalAction, deleteGoalAction } from "@/app/actions/tracking";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 interface Goal {
@@ -15,6 +15,8 @@ export function GoalsSection({ goals: initial }: { goals: Goal[] }) {
   const [isPending, startTransition] = useTransition();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", target_date: "" });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ title: "", description: "", target_date: "" });
 
   function handleCreate() {
     if (!form.title.trim()) return;
@@ -28,6 +30,19 @@ export function GoalsSection({ goals: initial }: { goals: Goal[] }) {
       setForm({ title: "", description: "", target_date: "" });
       setShowForm(false);
     });
+  }
+
+  function startEdit(goal: Goal) {
+    setEditingId(goal.id);
+    setEditForm({ title: goal.title, description: goal.description ?? "", target_date: goal.target_date ?? "" });
+  }
+
+  function handleUpdate() {
+    if (!editingId || !editForm.title.trim()) return;
+    setGoals((prev) => prev.map((g) => g.id === editingId ? { ...g, title: editForm.title.trim(), description: editForm.description || null, target_date: editForm.target_date || null } : g));
+    const id = editingId;
+    setEditingId(null);
+    startTransition(() => updateGoalAction(id, editForm.title.trim(), editForm.description, editForm.target_date || null));
   }
 
   function handleProgress(id: string, progress: number) {
@@ -96,11 +111,11 @@ export function GoalsSection({ goals: initial }: { goals: Goal[] }) {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {active.map((goal) => <GoalCard key={goal.id} goal={goal} onProgress={handleProgress} onDelete={handleDelete} />)}
+          {active.map((goal) => <GoalCard key={goal.id} goal={goal} onProgress={handleProgress} onDelete={handleDelete} onEdit={() => startEdit(goal)} isEditing={editingId === goal.id} editForm={editForm} setEditForm={setEditForm} onSaveEdit={handleUpdate} onCancelEdit={() => setEditingId(null)} />)}
           {completed.length > 0 && (
             <>
               <p className="text-[10px] uppercase tracking-widest mt-4 px-1" style={{ color: "rgba(245,240,232,0.25)" }}>Completed</p>
-              {completed.map((goal) => <GoalCard key={goal.id} goal={goal} onProgress={handleProgress} onDelete={handleDelete} />)}
+              {completed.map((goal) => <GoalCard key={goal.id} goal={goal} onProgress={handleProgress} onDelete={handleDelete} onEdit={() => startEdit(goal)} isEditing={editingId === goal.id} editForm={editForm} setEditForm={setEditForm} onSaveEdit={handleUpdate} onCancelEdit={() => setEditingId(null)} />)}
             </>
           )}
         </div>
@@ -135,15 +150,51 @@ export function GoalsSection({ goals: initial }: { goals: Goal[] }) {
   );
 }
 
-function GoalCard({ goal, onProgress, onDelete }: {
+function GoalCard({ goal, onProgress, onDelete, onEdit, isEditing, editForm, setEditForm, onSaveEdit, onCancelEdit }: {
   goal: Goal;
   onProgress: (id: string, p: number) => void;
   onDelete: (id: string) => void;
+  onEdit: () => void;
+  isEditing: boolean;
+  editForm: { title: string; description: string; target_date: string };
+  setEditForm: (f: { title: string; description: string; target_date: string }) => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
 }) {
   const done = goal.status === "completed";
   const daysLeft = goal.target_date
     ? Math.ceil((new Date(goal.target_date).getTime() - Date.now()) / 86400000)
     : null;
+
+  if (isEditing) {
+    return (
+      <div className="p-4 rounded-2xl" style={{ background: "rgba(200,144,10,0.05)", border: "1px solid rgba(200,144,10,0.2)" }}>
+        <input autoFocus value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+          placeholder="Goal title…" className="w-full bg-transparent text-sm font-medium outline-none mb-2"
+          style={{ color: "#F5F0E8" }} />
+        <input value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+          placeholder="Description (optional)…" className="w-full bg-transparent text-xs outline-none mb-3"
+          style={{ color: "rgba(245,240,232,0.5)" }} />
+        <div className="flex items-center gap-3 mb-3">
+          <label className="text-xs" style={{ color: "rgba(245,240,232,0.4)" }}>Target date</label>
+          <input type="date" value={editForm.target_date} onChange={(e) => setEditForm({ ...editForm, target_date: e.target.value })}
+            className="bg-transparent text-xs outline-none px-2 py-1 rounded-lg"
+            style={{ color: "#F5F0E8", border: "1px solid rgba(255,235,180,0.1)", colorScheme: "dark" }} />
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onSaveEdit}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+            style={{ background: "rgba(200,144,10,0.2)", color: "#C8900A" }}>
+            <Check className="w-3 h-3" /> Save
+          </button>
+          <button onClick={onCancelEdit} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
+            style={{ color: "rgba(245,240,232,0.4)" }}>
+            <X className="w-3 h-3" /> Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="group p-4 rounded-2xl transition-colors"
@@ -161,10 +212,16 @@ function GoalCard({ goal, onProgress, onDelete }: {
             </span>
           )}
           {done && <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "rgba(74,222,128,0.1)", color: "#4ADE80" }}>Done</span>}
-          <button onClick={() => onDelete(goal.id)}
-            className="w-6 h-6 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10">
-            <Trash2 className="w-3 h-3" style={{ color: "rgba(248,113,113,0.5)" }} />
-          </button>
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+            <button onClick={onEdit}
+              className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-[rgba(200,144,10,0.1)]">
+              <Pencil className="w-3 h-3" style={{ color: "rgba(200,144,10,0.6)" }} />
+            </button>
+            <button onClick={() => onDelete(goal.id)}
+              className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-red-500/10">
+              <Trash2 className="w-3 h-3" style={{ color: "rgba(248,113,113,0.5)" }} />
+            </button>
+          </div>
         </div>
       </div>
       {/* Progress bar + slider */}
