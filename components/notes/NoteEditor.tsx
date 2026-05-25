@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useCreateBlockNote } from "@blocknote/react";
+import { useCreateBlockNote, useEditorChange } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import type { Theme } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
 import { saveNoteAction } from "@/app/actions/notes";
 import type { Block, PartialBlock } from "@blocknote/core";
+import { Save, Check, Loader2 } from "lucide-react";
 
 const nexusTheme: Theme = {
   colors: {
@@ -53,7 +54,7 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
 
   const editor = useCreateBlockNote();
 
-  // Load saved content imperatively after mount
+  // Load saved content after mount
   useEffect(() => {
     const t = setTimeout(() => {
       if (initialContent.length > 0) {
@@ -78,41 +79,40 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
         setSaveStatus("saving");
         const result = await saveNoteAction({ id: noteId, title: newTitle, content });
         if (!result.success) {
-          console.error("[NoteEditor] save failed:", result.error);
           setSaveStatus("unsaved");
         } else {
           dirtyRef.current = false;
           setSaveStatus("saved");
         }
-      }, 500);
+      }, 1500);
     },
     [noteId]
   );
 
-  useEffect(() => {
-    const unsubscribe = editor.onChange(() => {
-      if (isLoadingRef.current) return;
-      scheduleSave(titleRef.current, editor.document as Block[]);
+  // Proper BlockNote React hook for content change — fires reliably
+  useEditorChange(() => {
+    if (isLoadingRef.current) return;
+    scheduleSave(titleRef.current, editor.document as Block[]);
+  }, editor);
+
+  // Manual save — immediate, no debounce
+  async function handleManualSave() {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    setSaveStatus("saving");
+    const result = await saveNoteAction({
+      id: noteId,
+      title: titleRef.current,
+      content: editor.document as Block[],
     });
-    return unsubscribe;
-  }, [editor, scheduleSave]);
+    if (result.success) {
+      dirtyRef.current = false;
+      setSaveStatus("saved");
+    } else {
+      setSaveStatus("unsaved");
+    }
+  }
 
-  // Periodic backup save every 3 s — catches any case where onChange doesn't fire
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (dirtyRef.current && !isLoadingRef.current) {
-        void saveNoteAction({
-          id: noteIdRef.current,
-          title: titleRef.current,
-          content: editor.document as Block[],
-        });
-      }
-    }, 3000);
-    return () => clearInterval(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // On unmount, flush any pending save immediately
+  // On unmount, flush any pending save
   useEffect(() => {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -135,32 +135,54 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
     scheduleSave(val, editor.document as Block[]);
   }
 
+  const isSaved = saveStatus === "saved";
+  const isSaving = saveStatus === "saving";
+
   return (
     <div className="flex flex-col h-full">
-      <div className="px-12 pt-10 pb-2">
+      <div className="px-6 md:px-12 pt-8 md:pt-10 pb-2">
         <input
           type="text"
           value={title}
           onChange={handleTitleChange}
           placeholder="Untitled"
-          className="w-full text-3xl font-semibold tracking-tight bg-transparent border-none outline-none placeholder:opacity-20"
+          className="w-full text-2xl md:text-3xl font-semibold tracking-tight bg-transparent border-none outline-none placeholder:opacity-20"
           style={{ color: "#F5F0E8" }}
         />
       </div>
 
-      <div className="px-12 mb-4">
+      {/* Save bar */}
+      <div className="flex items-center justify-between px-6 md:px-12 mb-4">
         <span className="text-xs" style={{
-          color: saveStatus === "saved"
+          color: isSaved
             ? "rgba(74,222,128,0.5)"
-            : saveStatus === "saving"
+            : isSaving
             ? "rgba(245,240,232,0.3)"
-            : "rgba(200,144,10,0.5)",
+            : "rgba(200,144,10,0.6)",
         }}>
-          {saveStatus === "saved" ? "Saved" : saveStatus === "saving" ? "Saving…" : "Unsaved changes"}
+          {isSaved ? "All changes saved" : isSaving ? "Saving…" : "Unsaved changes"}
         </span>
+
+        <button
+          onClick={handleManualSave}
+          disabled={isSaving || isSaved}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all disabled:opacity-40"
+          style={{
+            background: isSaved ? "rgba(74,222,128,0.08)" : "rgba(200,144,10,0.12)",
+            border: isSaved ? "1px solid rgba(74,222,128,0.2)" : "1px solid rgba(200,144,10,0.3)",
+            color: isSaved ? "rgba(74,222,128,0.7)" : "#C8900A",
+          }}
+        >
+          {isSaving
+            ? <><Loader2 className="w-3 h-3 animate-spin" /> Saving</>
+            : isSaved
+            ? <><Check className="w-3 h-3" /> Saved</>
+            : <><Save className="w-3 h-3" /> Save</>
+          }
+        </button>
       </div>
 
-      <div className="flex-1 px-8 overflow-y-auto blocknote-nexus">
+      <div className="flex-1 px-2 md:px-8 overflow-y-auto blocknote-nexus">
         <BlockNoteView editor={editor} theme={nexusTheme} />
       </div>
     </div>
