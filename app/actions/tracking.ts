@@ -23,6 +23,12 @@ export async function createHabitAction(name: string, color: string) {
   return { id: data.id };
 }
 
+export async function updateHabitAction(id: string, name: string, color: string) {
+  const userId = await getUserId();
+  await db().from("habits").update({ name, color }).eq("id", id).eq("user_id", userId);
+  revalidatePath("/tracking");
+}
+
 export async function deleteHabitAction(id: string) {
   const userId = await getUserId();
   await db().from("habits").delete().eq("id", id).eq("user_id", userId);
@@ -60,6 +66,16 @@ export async function createSubscriptionAction(input: z.infer<typeof subSchema>)
   return { id: data.id };
 }
 
+export async function updateSubscriptionAction(id: string, input: z.infer<typeof subSchema>) {
+  const parsed = subSchema.safeParse(input);
+  if (!parsed.success) return { error: "Invalid input" };
+  const userId = await getUserId();
+  const { error } = await db().from("subscriptions").update(parsed.data).eq("id", id).eq("user_id", userId);
+  if (error) return { error: error.message };
+  revalidatePath("/tracking");
+  return { success: true };
+}
+
 export async function deleteSubscriptionAction(id: string) {
   const userId = await getUserId();
   await db().from("subscriptions").delete().eq("id", id).eq("user_id", userId);
@@ -82,6 +98,12 @@ export async function updateGoalProgressAction(id: string, progress: number) {
   const userId = await getUserId();
   const status = progress === 100 ? "completed" : "active";
   await db().from("goals").update({ progress, status }).eq("id", id).eq("user_id", userId);
+  revalidatePath("/tracking");
+}
+
+export async function updateGoalAction(id: string, title: string, description: string, targetDate: string | null) {
+  const userId = await getUserId();
+  await db().from("goals").update({ title, description: description || null, target_date: targetDate || null }).eq("id", id).eq("user_id", userId);
   revalidatePath("/tracking");
 }
 
@@ -108,6 +130,12 @@ export async function updateReadingStatusAction(id: string, status: "to-read" | 
   await db().from("reading_list")
     .update({ status, ...(rating !== undefined ? { rating } : {}) })
     .eq("id", id).eq("user_id", userId);
+  revalidatePath("/tracking");
+}
+
+export async function updateReadingItemAction(id: string, title: string, author: string) {
+  const userId = await getUserId();
+  await db().from("reading_list").update({ title, author: author || null }).eq("id", id).eq("user_id", userId);
   revalidatePath("/tracking");
 }
 
@@ -148,6 +176,12 @@ export async function createDateAction(label: string, date: string, type: string
   if (error) return { error: error.message };
   revalidatePath("/tracking");
   return { id: data.id };
+}
+
+export async function updateDateAction(id: string, label: string, date: string, type: string, recurring: boolean) {
+  const userId = await getUserId();
+  await db().from("important_dates").update({ label, date, type, recurring }).eq("id", id).eq("user_id", userId);
+  revalidatePath("/tracking");
 }
 
 export async function deleteDateAction(id: string) {
