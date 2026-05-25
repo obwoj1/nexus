@@ -79,6 +79,11 @@ export function NotesShell({ initialNotes, initialContents, journalId, timezone 
     setTitleMap((prev) => ({ ...prev, [activeId]: title }));
   }
 
+  function handleNoteSaved(content: Block[]) {
+    if (!activeId) return;
+    setContentMap((prev) => ({ ...prev, [activeId]: content }));
+  }
+
   const activeContent = activeId !== null ? (contentMap[activeId] ?? null) : null;
   const activeTitle = activeId ? (titleMap[activeId] ?? "Untitled") : "Untitled";
   // Only render editor once content is ready (null = still loading)
@@ -132,6 +137,7 @@ export function NotesShell({ initialNotes, initialContents, journalId, timezone 
               initialTitle={activeTitle}
               initialContent={activeContent}
               onTitleChange={handleTitleChange}
+              onSaved={handleNoteSaved}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-3">

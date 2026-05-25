@@ -41,11 +41,12 @@ interface Props {
   initialTitle: string;
   initialContent: Block[];
   onTitleChange: (title: string) => void;
+  onSaved: (content: Block[]) => void;
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
-export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange }: Props) {
+export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange, onSaved }: Props) {
   const [title, setTitle] = useState(initialTitle);
   const [status, setStatus] = useState<SaveStatus>("idle");
   const titleRef = useRef(initialTitle);
@@ -55,7 +56,7 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
 
   const editor = useCreateBlockNote();
 
-  // Load existing content into the editor after mount
+  // Load existing content into the editor after mount and subscribe to changes
   useEffect(() => {
     const t = setTimeout(() => {
       if (initialContent.length > 0) {
@@ -67,7 +68,18 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
         }
       }
     }, 0);
-    return () => clearTimeout(t);
+
+    // Use the raw editor.onChange API — this is the only reliable way to
+    // subscribe to content changes in BlockNote v0.51. BlockNoteView's
+    // `onChange` prop is only wired to internal form inputs, not editor content.
+    const unsub = editor.onChange(() => {
+      contentRef.current = editor.document as Block[];
+    });
+
+    return () => {
+      clearTimeout(t);
+      unsub();
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -86,12 +98,14 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
 
   async function doSave() {
     setStatus("saving");
+    const content = contentRef.current;
     const result = await saveNoteAction({
       id: noteIdRef.current,
       title: titleRef.current,
-      content: contentRef.current,   // always up-to-date via onChange
+      content,
     });
     if (result.success) {
+      onSaved(content);
       setStatus("saved");
       setTimeout(() => setStatus("idle"), 2500);
     } else {
@@ -151,10 +165,6 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
         <BlockNoteView
           editor={editor}
           theme={nexusTheme}
-          onChange={() => {
-            // Keep contentRef in sync on every keystroke
-            contentRef.current = editor.document as Block[];
-          }}
         />
       </div>
     </div>
