@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Trash2, Flame } from "lucide-react";
-import { createHabitAction, deleteHabitAction, toggleHabitLogAction } from "@/app/actions/tracking";
+import { Plus, Trash2, Flame, Pencil, Check, X } from "lucide-react";
+import { createHabitAction, updateHabitAction, deleteHabitAction, toggleHabitLogAction } from "@/app/actions/tracking";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 interface Habit { id: string; name: string; color: string; }
@@ -36,6 +36,9 @@ export function HabitsSection({ today, habits: initial, habitLogs }: {
   const [showForm, setShowForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState(COLORS[0]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editColor, setEditColor] = useState(COLORS[0]);
   const [logs, setLogs] = useState<Set<string>>(
     new Set(habitLogs.map((l) => `${l.habit_id}|${l.date}`))
   );
@@ -74,6 +77,20 @@ export function HabitsSection({ today, habits: initial, habitLogs }: {
       setHabits((prev) => [...prev, { id: res.id, name: newName.trim(), color: newColor }]);
       setNewName(""); setShowForm(false);
     });
+  }
+
+  function startEdit(habit: Habit) {
+    setEditingId(habit.id);
+    setEditName(habit.name);
+    setEditColor(habit.color);
+  }
+
+  function handleUpdate() {
+    if (!editingId || !editName.trim()) return;
+    setHabits((prev) => prev.map((h) => h.id === editingId ? { ...h, name: editName.trim(), color: editColor } : h));
+    const id = editingId;
+    setEditingId(null);
+    startTransition(() => updateHabitAction(id, editName.trim(), editColor));
   }
 
   function handleDelete(id: string) {
@@ -166,6 +183,36 @@ export function HabitsSection({ today, habits: initial, habitLogs }: {
         {habits.map((habit) => {
           const habitLogSet = logsPerHabit(habit.id);
           const streak = getStreak(habitLogSet, today);
+
+          if (editingId === habit.id) {
+            return (
+              <div key={habit.id} className="px-4 py-3 rounded-2xl" style={{ background: "rgba(200,144,10,0.05)", border: "1px solid rgba(200,144,10,0.2)" }}>
+                <input autoFocus value={editName} onChange={(e) => setEditName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleUpdate()}
+                  className="w-full bg-transparent text-sm outline-none mb-2" style={{ color: "#F5F0E8" }} />
+                <div className="flex items-center gap-2 mb-2">
+                  {COLORS.map((c) => (
+                    <button key={c} onClick={() => setEditColor(c)}
+                      className="w-5 h-5 rounded-full transition-all"
+                      style={{ background: c, outline: editColor === c ? `2px solid ${c}` : "none", outlineOffset: "2px" }} />
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={handleUpdate}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium"
+                    style={{ background: "rgba(200,144,10,0.2)", color: "#C8900A" }}>
+                    <Check className="w-3 h-3" /> Save
+                  </button>
+                  <button onClick={() => setEditingId(null)}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs"
+                    style={{ color: "rgba(245,240,232,0.4)" }}>
+                    <X className="w-3 h-3" /> Cancel
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div key={habit.id}
               className="group flex items-center gap-4 px-4 py-3 rounded-2xl transition-colors"
@@ -200,11 +247,17 @@ export function HabitsSection({ today, habits: initial, habitLogs }: {
                   {streak > 0 ? `🔥 ${streak}` : "—"}
                 </span>
               </div>
-              {/* Delete */}
-              <button onClick={() => handleDelete(habit.id)}
-                className="w-6 h-6 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10">
-                <Trash2 className="w-3 h-3" style={{ color: "rgba(248,113,113,0.5)" }} />
-              </button>
+              {/* Edit + Delete */}
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                <button onClick={() => startEdit(habit)}
+                  className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-[rgba(200,144,10,0.1)]">
+                  <Pencil className="w-3 h-3" style={{ color: "rgba(200,144,10,0.6)" }} />
+                </button>
+                <button onClick={() => handleDelete(habit.id)}
+                  className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-red-500/10">
+                  <Trash2 className="w-3 h-3" style={{ color: "rgba(248,113,113,0.5)" }} />
+                </button>
+              </div>
             </div>
           );
         })}
