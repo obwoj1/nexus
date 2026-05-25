@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Trash2, CreditCard } from "lucide-react";
-import { createSubscriptionAction, deleteSubscriptionAction } from "@/app/actions/tracking";
+import { Plus, Trash2, CreditCard, Pencil, Check, X } from "lucide-react";
+import { createSubscriptionAction, deleteSubscriptionAction, updateSubscriptionAction } from "@/app/actions/tracking";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 const PIE_COLORS = ["#C8900A", "#4ADE80", "#60A5FA", "#F87171", "#A78BFA", "#FB923C", "#34D399", "#F472B6"];
@@ -28,6 +28,8 @@ export function SubscriptionsSection({ subscriptions: initial }: { subscriptions
   const [isPending, startTransition] = useTransition();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", amount: "", billing_cycle: "monthly", next_billing_date: "", category: "Other" });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", amount: "", billing_cycle: "monthly", next_billing_date: "", category: "Other" });
 
   const monthlyTotal = subs.reduce((sum, s) => sum + toMonthly(Number(s.amount), s.billing_cycle), 0);
   const annualTotal = monthlyTotal * 12;
@@ -60,6 +62,31 @@ export function SubscriptionsSection({ subscriptions: initial }: { subscriptions
       setForm({ name: "", amount: "", billing_cycle: "monthly", next_billing_date: "", category: "Other" });
       setShowForm(false);
     });
+  }
+
+  function startEdit(sub: Subscription) {
+    setEditingId(sub.id);
+    setEditForm({
+      name: sub.name,
+      amount: String(sub.amount),
+      billing_cycle: sub.billing_cycle,
+      next_billing_date: sub.next_billing_date ?? "",
+      category: sub.category ?? "Other",
+    });
+  }
+
+  function handleUpdate() {
+    if (!editingId || !editForm.name || !editForm.amount) return;
+    const updated = {
+      name: editForm.name,
+      amount: parseFloat(editForm.amount),
+      billing_cycle: editForm.billing_cycle as "weekly" | "monthly" | "annual",
+      next_billing_date: editForm.next_billing_date || null,
+      category: editForm.category || null,
+    };
+    setSubs((prev) => prev.map((s) => s.id === editingId ? { ...s, ...updated } : s));
+    setEditingId(null);
+    startTransition(async () => { await updateSubscriptionAction(editingId!, updated); });
   }
 
   function handleDelete(id: string) {
@@ -146,6 +173,47 @@ export function SubscriptionsSection({ subscriptions: initial }: { subscriptions
             const daysUntil = sub.next_billing_date
               ? Math.ceil((new Date(sub.next_billing_date).getTime() - Date.now()) / 86400000)
               : null;
+
+            if (editingId === sub.id) {
+              return (
+                <div key={sub.id} className="p-4 rounded-2xl" style={{ background: "rgba(200,144,10,0.05)", border: "1px solid rgba(200,144,10,0.2)" }}>
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <input autoFocus value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      placeholder="Name" className="bg-transparent text-sm outline-none px-3 py-1.5 rounded-lg col-span-2"
+                      style={{ color: "#F5F0E8", border: "1px solid rgba(255,235,180,0.12)" }} />
+                    <input type="number" value={editForm.amount} onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+                      placeholder="Amount ($)" className="bg-transparent text-sm outline-none px-3 py-1.5 rounded-lg"
+                      style={{ color: "#F5F0E8", border: "1px solid rgba(255,235,180,0.12)" }} />
+                    <select value={editForm.billing_cycle} onChange={(e) => setEditForm({ ...editForm, billing_cycle: e.target.value })}
+                      className="bg-transparent text-sm outline-none px-3 py-1.5 rounded-lg"
+                      style={{ color: "#F5F0E8", border: "1px solid rgba(255,235,180,0.12)", background: "#0D0C0A" }}>
+                      {CYCLES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                    </select>
+                    <input type="date" value={editForm.next_billing_date} onChange={(e) => setEditForm({ ...editForm, next_billing_date: e.target.value })}
+                      className="bg-transparent text-sm outline-none px-3 py-1.5 rounded-lg"
+                      style={{ color: "#F5F0E8", border: "1px solid rgba(255,235,180,0.12)", colorScheme: "dark" }} />
+                    <select value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                      className="bg-transparent text-sm outline-none px-3 py-1.5 rounded-lg"
+                      style={{ color: "#F5F0E8", border: "1px solid rgba(255,235,180,0.12)", background: "#0D0C0A" }}>
+                      {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={handleUpdate} disabled={isPending}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40"
+                      style={{ background: "rgba(200,144,10,0.2)", color: "#C8900A" }}>
+                      <Check className="w-3 h-3" /> Save
+                    </button>
+                    <button onClick={() => setEditingId(null)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
+                      style={{ color: "rgba(245,240,232,0.4)" }}>
+                      <X className="w-3 h-3" /> Cancel
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <div key={sub.id} className="group flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-colors"
                 style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,235,180,0.06)" }}>
@@ -167,10 +235,16 @@ export function SubscriptionsSection({ subscriptions: initial }: { subscriptions
                 <div className="text-right shrink-0">
                   <p className="text-sm font-semibold" style={{ color: "#C8900A" }}>${monthly.toFixed(2)}<span className="text-xs font-normal" style={{ color: "rgba(245,240,232,0.3)" }}>/mo</span></p>
                 </div>
-                <button onClick={() => handleDelete(sub.id)}
-                  className="w-6 h-6 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10">
-                  <Trash2 className="w-3 h-3" style={{ color: "rgba(248,113,113,0.5)" }} />
-                </button>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                  <button onClick={() => startEdit(sub)}
+                    className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-[rgba(200,144,10,0.1)]">
+                    <Pencil className="w-3 h-3" style={{ color: "rgba(200,144,10,0.6)" }} />
+                  </button>
+                  <button onClick={() => handleDelete(sub.id)}
+                    className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-red-500/10">
+                    <Trash2 className="w-3 h-3" style={{ color: "rgba(248,113,113,0.5)" }} />
+                  </button>
+                </div>
               </div>
             );
           })}
