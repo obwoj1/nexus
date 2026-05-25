@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Trash2, CalendarDays } from "lucide-react";
-import { createDateAction, deleteDateAction } from "@/app/actions/tracking";
+import { Plus, Trash2, CalendarDays, Pencil, Check, X } from "lucide-react";
+import { createDateAction, updateDateAction, deleteDateAction } from "@/app/actions/tracking";
 
 interface ImportantDate {
   id: string; label: string; date: string; type: string; recurring: boolean;
@@ -31,6 +31,21 @@ export function DatesSection({ dates: initial, today }: { dates: ImportantDate[]
   const [isPending, startTransition] = useTransition();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ label: "", date: "", type: "other" as typeof TYPES[number], recurring: false });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ label: "", date: "", type: "other" as typeof TYPES[number], recurring: false });
+
+  function startEdit(d: ImportantDate) {
+    setEditingId(d.id);
+    setEditForm({ label: d.label, date: d.date, type: d.type as typeof TYPES[number], recurring: d.recurring });
+  }
+
+  function handleUpdate() {
+    if (!editingId || !editForm.label.trim() || !editForm.date) return;
+    setDates((prev) => prev.map((d) => d.id === editingId ? { ...d, ...editForm } : d));
+    const id = editingId;
+    setEditingId(null);
+    startTransition(() => updateDateAction(id, editForm.label.trim(), editForm.date, editForm.type, editForm.recurring));
+  }
 
   function handleCreate() {
     if (!form.label.trim() || !form.date) return;
@@ -105,14 +120,14 @@ export function DatesSection({ dates: initial, today }: { dates: ImportantDate[]
         <div className="flex flex-col gap-2">
           {upcoming.map((d) => {
             const days = daysUntil(d.date, d.recurring, today);
-            return <DateRow key={d.id} date={d} daysUntil={days} onDelete={handleDelete} />;
+            return <DateRow key={d.id} date={d} daysUntil={days} onDelete={handleDelete} onEdit={() => startEdit(d)} isEditing={editingId === d.id} editForm={editForm} setEditForm={setEditForm} onSave={handleUpdate} onCancel={() => setEditingId(null)} />;
           })}
           {past.length > 0 && (
             <>
               <p className="text-[10px] uppercase tracking-widest mt-4 px-1" style={{ color: "rgba(245,240,232,0.2)" }}>Past</p>
               {past.map((d) => {
                 const days = daysUntil(d.date, d.recurring, today);
-                return <DateRow key={d.id} date={d} daysUntil={days} onDelete={handleDelete} />;
+                return <DateRow key={d.id} date={d} daysUntil={days} onDelete={handleDelete} onEdit={() => startEdit(d)} isEditing={editingId === d.id} editForm={editForm} setEditForm={setEditForm} onSave={handleUpdate} onCancel={() => setEditingId(null)} />;
               })}
             </>
           )}
@@ -122,11 +137,51 @@ export function DatesSection({ dates: initial, today }: { dates: ImportantDate[]
   );
 }
 
-function DateRow({ date, daysUntil: days, onDelete }: {
+function DateRow({ date, daysUntil: days, onDelete, onEdit, isEditing, editForm, setEditForm, onSave, onCancel }: {
   date: ImportantDate; daysUntil: number; onDelete: (id: string) => void;
+  onEdit: () => void; isEditing: boolean;
+  editForm: { label: string; date: string; type: typeof TYPES[number]; recurring: boolean };
+  setEditForm: (f: { label: string; date: string; type: typeof TYPES[number]; recurring: boolean }) => void;
+  onSave: () => void; onCancel: () => void;
 }) {
   const urgent = days >= 0 && days <= 7;
   const isToday = days === 0;
+
+  if (isEditing) {
+    return (
+      <div className="p-4 rounded-2xl" style={{ background: "rgba(200,144,10,0.05)", border: "1px solid rgba(200,144,10,0.2)" }}>
+        <input autoFocus value={editForm.label} onChange={(e) => setEditForm({ ...editForm, label: e.target.value })}
+          placeholder="Label…" className="w-full bg-transparent text-sm font-medium outline-none mb-3"
+          style={{ color: "#F5F0E8" }} />
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <input type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+            className="bg-transparent text-sm outline-none px-3 py-1.5 rounded-lg"
+            style={{ color: "#F5F0E8", border: "1px solid rgba(255,235,180,0.12)", colorScheme: "dark" }} />
+          <select value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value as typeof TYPES[number] })}
+            className="bg-transparent text-sm outline-none px-3 py-1.5 rounded-lg"
+            style={{ color: "#F5F0E8", border: "1px solid rgba(255,235,180,0.12)", background: "#0D0C0A" }}>
+            {TYPES.map((t) => <option key={t} value={t}>{TYPE_ICONS[t]} {t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+          </select>
+        </div>
+        <label className="flex items-center gap-2 mb-3 cursor-pointer">
+          <input type="checkbox" checked={editForm.recurring} onChange={(e) => setEditForm({ ...editForm, recurring: e.target.checked })}
+            className="accent-[#C8900A]" />
+          <span className="text-xs" style={{ color: "rgba(245,240,232,0.5)" }}>Recurring yearly</span>
+        </label>
+        <div className="flex gap-2">
+          <button onClick={onSave}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+            style={{ background: "rgba(200,144,10,0.2)", color: "#C8900A" }}>
+            <Check className="w-3 h-3" /> Save
+          </button>
+          <button onClick={onCancel} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
+            style={{ color: "rgba(245,240,232,0.4)" }}>
+            <X className="w-3 h-3" /> Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="group flex items-center gap-4 px-4 py-3 rounded-2xl transition-colors"
@@ -153,10 +208,15 @@ function DateRow({ date, daysUntil: days, onDelete }: {
           <span className="text-xs" style={{ color: "rgba(245,240,232,0.2)" }}>{Math.abs(days)}d ago</span>
         )}
       </div>
-      <button onClick={() => onDelete(date.id)}
-        className="w-6 h-6 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10">
-        <Trash2 className="w-3 h-3" style={{ color: "rgba(248,113,113,0.5)" }} />
-      </button>
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+        <button onClick={onEdit} className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-[rgba(200,144,10,0.1)]">
+          <Pencil className="w-3 h-3" style={{ color: "rgba(200,144,10,0.6)" }} />
+        </button>
+        <button onClick={() => onDelete(date.id)}
+          className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-red-500/10">
+          <Trash2 className="w-3 h-3" style={{ color: "rgba(248,113,113,0.5)" }} />
+        </button>
+      </div>
     </div>
   );
 }
