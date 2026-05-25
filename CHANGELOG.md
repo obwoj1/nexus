@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Fixed — Notes auto-save + tracking inline edit + UX polish (2026-05-24, Session 14)
+- fix(notes): replace manual Save button with debounced auto-save (1.5s after last keystroke)
+- fix(notes): use editor.onChange() raw API instead of BlockNoteView onChange prop — only reliable content hook in v0.51
+- fix(notes): contentMap updated via onSaved callback after each save — switching notes and back no longer shows stale content
+- fix(tracking): inline edit (pencil icon on hover) added to subscriptions, goals, habits, reading list, important dates
+- fix(sidebar): logout button always visible with red-tinted background on desktop; red label on mobile tab bar
+- feat(dashboard): Phase placeholder cards replaced with live feature shortcuts (Tracking, Workouts, Wardrobe, Notes)
+
 ### Added — Wardrobe + Claudia Stylist (2026-05-23, Session 13)
 - feat(wardrobe): /wardrobe page — server fetches wardrobe items + saved outfits with signed URLs in parallel
 - feat(wardrobe): WardrobeShell — 3-tab nav: Wardrobe / Ask Claudia / Saved Fits

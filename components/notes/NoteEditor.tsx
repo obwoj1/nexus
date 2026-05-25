@@ -7,7 +7,6 @@ import type { Theme } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
 import { saveNoteAction } from "@/app/actions/notes";
 import type { Block, PartialBlock } from "@blocknote/core";
-import { Save, Check, Loader2, AlertCircle } from "lucide-react";
 
 const nexusTheme: Theme = {
   colors: {
@@ -46,17 +45,19 @@ interface Props {
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
+const DEBOUNCE_MS = 1500;
+
 export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange, onSaved }: Props) {
   const [title, setTitle] = useState(initialTitle);
   const [status, setStatus] = useState<SaveStatus>("idle");
   const titleRef = useRef(initialTitle);
   const noteIdRef = useRef(noteId);
-  // contentRef is updated on every editor change — always holds latest blocks
   const contentRef = useRef<Block[]>(initialContent);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const editor = useCreateBlockNote();
 
-  // Load existing content into the editor after mount and subscribe to changes
   useEffect(() => {
     const t = setTimeout(() => {
       if (initialContent.length > 0) {
@@ -69,32 +70,24 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
       }
     }, 0);
 
-    // Use the raw editor.onChange API — this is the only reliable way to
-    // subscribe to content changes in BlockNote v0.51. BlockNoteView's
-    // `onChange` prop is only wired to internal form inputs, not editor content.
     const unsub = editor.onChange(() => {
       contentRef.current = editor.document as Block[];
+      scheduleSave();
     });
 
     return () => {
       clearTimeout(t);
       unsub();
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cmd+S / Ctrl+S
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault();
-        void doSave();
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  function scheduleSave() {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => void doSave(), DEBOUNCE_MS);
+  }
 
   async function doSave() {
     setStatus("saving");
@@ -104,13 +97,14 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
       title: titleRef.current,
       content,
     });
+    if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
     if (result.success) {
       onSaved(content);
       setStatus("saved");
-      setTimeout(() => setStatus("idle"), 2500);
+      statusTimerRef.current = setTimeout(() => setStatus("idle"), 2000);
     } else {
       setStatus("error");
-      setTimeout(() => setStatus("idle"), 3000);
+      statusTimerRef.current = setTimeout(() => setStatus("idle"), 3000);
     }
   }
 
@@ -119,12 +113,12 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
     setTitle(val);
     titleRef.current = val;
     onTitleChange(val);
+    scheduleSave();
   }
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header row: title + save button */}
-      <div className="flex items-start gap-4 px-6 md:px-12 pt-8 md:pt-10 pb-3 shrink-0">
+      <div className="flex items-end gap-3 px-6 md:px-12 pt-8 md:pt-10 pb-4 shrink-0">
         <input
           type="text"
           value={title}
@@ -134,32 +128,21 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
           style={{ color: "#F5F0E8" }}
         />
 
-        <button
-          onClick={doSave}
-          disabled={status === "saving"}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold shrink-0 transition-all disabled:opacity-60"
+        {/* Subtle auto-save status — no button needed */}
+        <span
+          className="text-[10px] font-medium shrink-0 pb-1 transition-opacity duration-300"
           style={{
-            background: status === "saved"  ? "rgba(74,222,128,0.12)"
-                      : status === "error"  ? "rgba(248,113,113,0.1)"
-                      : "rgba(200,144,10,0.15)",
-            border:     status === "saved"  ? "1px solid rgba(74,222,128,0.3)"
-                      : status === "error"  ? "1px solid rgba(248,113,113,0.3)"
-                      : "1px solid rgba(200,144,10,0.4)",
-            color:      status === "saved"  ? "#4ADE80"
-                      : status === "error"  ? "#F87171"
-                      : "#C8900A",
+            color:   status === "saved"  ? "#4ADE80"
+                   : status === "error"  ? "#F87171"
+                   : "rgba(245,240,232,0.2)",
+            opacity: status === "idle" ? 0 : 1,
           }}
         >
-          {status === "saving" && <><Loader2 className="w-4 h-4 animate-spin" />Saving…</>}
-          {status === "saved"  && <><Check   className="w-4 h-4" />Saved</>}
-          {status === "error"  && <><AlertCircle className="w-4 h-4" />Failed — retry</>}
-          {status === "idle"   && <><Save    className="w-4 h-4" />Save</>}
-        </button>
+          {status === "saving" && "Saving…"}
+          {status === "saved"  && "Saved"}
+          {status === "error"  && "Failed to save"}
+        </span>
       </div>
-
-      <p className="px-6 md:px-12 text-[10px] mb-3 shrink-0" style={{ color: "rgba(245,240,232,0.18)" }}>
-        ⌘S to save
-      </p>
 
       <div className="flex-1 px-2 md:px-8 overflow-y-auto blocknote-nexus">
         <BlockNoteView
