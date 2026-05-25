@@ -40,3 +40,9 @@ export interface PriceData {
   price: number;
   change: number;
 }
+
+export interface SearchResult {
+  ticker: string;
+  name: string;
+  asset_type: "stock" | "crypto";
+}

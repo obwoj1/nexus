@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { CRYPTO_IDS, type Holding, type PriceData } from "@/lib/investments";
+import { CRYPTO_IDS, type Holding, type PriceData, type SearchResult } from "@/lib/investments";
 import { z } from "zod";
 
 const holdingSchema = z.object({
@@ -55,6 +55,40 @@ export async function deleteHoldingAction(id: string) {
 
   await supabase.from("holdings").delete().eq("id", id).eq("user_id", user.id);
   return { success: true };
+}
+
+export async function searchSymbolsAction(query: string): Promise<SearchResult[]> {
+  const q = query.trim();
+  if (q.length < 1) return [];
+
+  const key = process.env.FINNHUB_API_KEY;
+
+  const [stocks, cryptos] = await Promise.all([
+    key
+      ? fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(q)}&token=${key}`, { cache: "no-store" })
+          .then(r => r.json())
+          .then((d: { result?: Array<{ symbol: string; description: string; type: string }> }) =>
+            (d.result ?? [])
+              .filter(r => r.type === "Common Stock" || r.type === "ETP")
+              .slice(0, 6)
+              .map(r => ({ ticker: r.symbol, name: r.description, asset_type: "stock" as const }))
+          )
+          .catch(() => [] as SearchResult[])
+      : [] as SearchResult[],
+
+    fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(q)}`, { cache: "no-store" })
+      .then(r => r.json())
+      .then((d: { coins?: Array<{ symbol: string; name: string }> }) =>
+        (d.coins ?? []).slice(0, 3).map(c => ({
+          ticker: c.symbol.toUpperCase(),
+          name:   c.name,
+          asset_type: "crypto" as const,
+        }))
+      )
+      .catch(() => [] as SearchResult[]),
+  ]);
+
+  return [...stocks, ...cryptos].slice(0, 8);
 }
 
 export async function fetchPricesAction(
