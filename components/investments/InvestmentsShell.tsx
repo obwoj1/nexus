@@ -37,7 +37,12 @@ export function InvestmentsShell({ initialHoldings }: { initialHoldings: Holding
     cost_basis: "",
   });
 
-  useEffect(() => { void loadPrices(initialHoldings); }, []); // eslint-disable-line
+  useEffect(() => {
+    void loadPrices(initialHoldings);
+    // Poll every 10 seconds for live price updates
+    const interval = setInterval(() => void loadPrices(), 10_000);
+    return () => clearInterval(interval);
+  }, []); // eslint-disable-line
 
   async function loadPrices(hs: Holding[] = holdings) {
     setPricesLoading(true);
@@ -105,11 +110,22 @@ export function InvestmentsShell({ initialHoldings }: { initialHoldings: Holding
       <div className="flex items-start justify-between mb-8">
         <div>
           <h1 className="text-xl font-semibold tracking-tight" style={{ color: "#F5F0E8" }}>Investments</h1>
-          <p className="text-[10px] mt-0.5" style={{ color: "rgba(245,240,232,0.3)" }}>
-            {updatedAt
-              ? `Updated ${updatedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-              : "Fetching prices…"}
-          </p>
+          <div className="flex items-center gap-1.5 mt-1">
+            {/* Live pulse dot */}
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                style={{ background: pricesLoading ? "rgba(245,240,232,0.3)" : "#4ADE80" }} />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full"
+                style={{ background: pricesLoading ? "rgba(245,240,232,0.3)" : "#4ADE80" }} />
+            </span>
+            <p className="text-[10px]" style={{ color: "rgba(245,240,232,0.3)" }}>
+              {pricesLoading
+                ? "Fetching…"
+                : updatedAt
+                  ? `Live · ${updatedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
+                  : "Live"}
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <button

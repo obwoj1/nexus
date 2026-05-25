@@ -117,26 +117,26 @@ export async function fetchPricesAction(
 
 async function fetchStockPrices(tickers: string[]): Promise<Record<string, PriceData>> {
   if (tickers.length === 0) return {};
-  try {
-    const res = await fetch(
-      `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${tickers.join(",")}`,
-      {
-        headers: { "User-Agent": "Mozilla/5.0 (compatible)", "Accept": "application/json" },
-        cache: "no-store",
+  const key = process.env.FINNHUB_API_KEY;
+  if (!key) return {};
+
+  // Fetch each symbol in parallel — Finnhub free tier allows 60 calls/min
+  const results = await Promise.all(
+    tickers.map(async (ticker) => {
+      try {
+        const res = await fetch(
+          `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${key}`,
+          { cache: "no-store" }
+        );
+        const data = await res.json() as { c: number; dp: number };
+        return { ticker, price: data.c ?? 0, change: data.dp ?? 0 };
+      } catch {
+        return { ticker, price: 0, change: 0 };
       }
-    );
-    const data = await res.json();
-    const result: Record<string, PriceData> = {};
-    for (const q of data.quoteResponse?.result ?? []) {
-      result[q.symbol] = {
-        price:  q.regularMarketPrice ?? 0,
-        change: q.regularMarketChangePercent ?? 0,
-      };
-    }
-    return result;
-  } catch {
-    return {};
-  }
+    })
+  );
+
+  return Object.fromEntries(results.map(r => [r.ticker, { price: r.price, change: r.change }]));
 }
 
 async function fetchCryptoPrices(tickers: string[]): Promise<Record<string, PriceData>> {
