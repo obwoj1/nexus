@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added — Gmail trade parsing, loading skeletons, Robinhood cleanup (2026-05-25, Session 15)
+- feat(investments): Gmail "Scan" button — scans up to 100 Robinhood trade confirmation emails, parses buy/sell, aggregates into net positions with weighted average cost basis, shows preview with per-ticker checkboxes before import
+- feat(investments): importGmailPositionsAction — skips already-owned tickers by default, imports selected positions to holdings table
+- feat(perf): loading.tsx added to all 8 routes (dashboard, investments, notes, tracking, workouts, calendar, mail, wardrobe) — navigation now shows glass skeleton instantly on click instead of blank/freeze
+- fix(investments): removed Robinhood Bearer token flow entirely — documented in ISSUES.md with alternatives: CSV (live), Gmail parsing (live), Plaid (future), official API (future)
+- fix(investments): TypeScript error on `res.error` narrowing — added nullish coalescing fallback
+
 ### Fixed — Notes auto-save + tracking inline edit + UX polish (2026-05-24, Session 14)
 - fix(notes): replace manual Save button with debounced auto-save (1.5s after last keystroke)
 - fix(notes): use editor.onChange() raw API instead of BlockNoteView onChange prop — only reliable content hook in v0.51

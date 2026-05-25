@@ -6,6 +6,42 @@
 
 ---
 
+## Session 15 — Investments: Gmail sync + page speed (2026-05-25)
+
+**Goal:** Replace the scrapped Robinhood Bearer token flow with something that actually works. Make page transitions feel faster.
+
+**Done:**
+
+**Robinhood Bearer token — removed:**
+- Built and immediately removed an approach that extracted Bearer tokens from DevTools — tokens expire fast, violates TOS, terrible UX
+- Documented in ISSUES.md (Issue #22) with full alternatives analysis
+
+**Gmail trade parsing (new, live):**
+- Added `scanRobinhoodTrades()` to `lib/google/gmail.ts` — queries Gmail for emails `from:robinhood.com`, fetches full message bodies (base64url decoded), applies regex patterns to extract buy/sell trades
+- Multi-part MIME support: prefers `text/plain`, falls back to `text/html` (strips tags)
+- `aggregateTrades()` — groups by ticker, nets buys vs sells, computes weighted average cost basis on buys only
+- New server action `scanGmailHoldingsAction` — runs the scan, returns positions + email count
+- New server action `importGmailPositionsAction` — takes positions + skip list, calls `addHoldingAction` for each
+- UI: "Gmail" button in investments header → scanning state → preview panel with per-ticker checkboxes → import button. Already-owned tickers pre-checked as skip
+
+**Page speed (loading.tsx):**
+- Added `loading.tsx` to all 8 app routes: dashboard, investments, notes, tracking, workouts, calendar, mail, wardrobe
+- Each file shows a glass skeleton that matches the rough layout of that page
+- Effect: clicking a nav item shows the skeleton within one frame instead of the app appearing frozen while the server component fetches data
+- Sidebar already used Next.js `<Link>` (prefetching was already on) — no changes needed there
+
+**Key technical note — Gmail email body decoding:**
+- Gmail API returns message bodies base64url encoded (`-` and `_` instead of `+` and `/`)
+- Standard `atob()` doesn't handle this — must replace chars before decoding or use `Buffer.from(data.replace(/-/g,'+').replace(/_/g,'/'), 'base64')`
+- Multi-part MIME messages (most modern emails) need to traverse `payload.parts[]` to find the text content
+
+**What's next:**
+- Test Gmail scan with real Robinhood emails — regex patterns may need tuning based on actual email format
+- Crypto price alerts / notifications
+- Gemini API key update (still deferred)
+
+---
+
 ## Session 1 — Project scaffold (2026-05-11)
 
 **Goal:** Get the project bootstrapped with the right stack and deployed.
