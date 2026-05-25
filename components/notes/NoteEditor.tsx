@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import type { Theme } from "@blocknote/mantine";
@@ -44,13 +43,13 @@ interface Props {
 }
 
 export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange }: Props) {
-  const router = useRouter();
   const [title, setTitle] = useState(initialTitle);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleRef = useRef(initialTitle);
-  const pendingContentRef = useRef<Block[] | null>(null);
   const isLoadingRef = useRef(true);
+  const dirtyRef = useRef(false);
+  const noteIdRef = useRef(noteId);
 
   const editor = useCreateBlockNote();
 
@@ -72,24 +71,22 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
 
   const scheduleSave = useCallback(
     (newTitle: string, content: Block[]) => {
+      dirtyRef.current = true;
       setSaveStatus("unsaved");
-      pendingContentRef.current = content;
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(async () => {
-        pendingContentRef.current = null;
         setSaveStatus("saving");
         const result = await saveNoteAction({ id: noteId, title: newTitle, content });
         if (!result.success) {
           console.error("[NoteEditor] save failed:", result.error);
           setSaveStatus("unsaved");
         } else {
+          dirtyRef.current = false;
           setSaveStatus("saved");
-          // Sync the Next.js router cache so navigating away and back shows fresh data
-          router.refresh();
         }
       }, 500);
     },
-    [noteId, router]
+    [noteId]
   );
 
   useEffect(() => {
@@ -100,18 +97,34 @@ export function NoteEditor({ noteId, initialTitle, initialContent, onTitleChange
     return unsubscribe;
   }, [editor, scheduleSave]);
 
-  const noteIdRef = useRef(noteId);
+  // Periodic backup save every 3 s — catches any case where onChange doesn't fire
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (dirtyRef.current && !isLoadingRef.current) {
+        void saveNoteAction({
+          id: noteIdRef.current,
+          title: titleRef.current,
+          content: editor.document as Block[],
+        });
+      }
+    }, 3000);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // On unmount, flush any pending save immediately
   useEffect(() => {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      if (pendingContentRef.current !== null) {
-        saveNoteAction({
+      if (dirtyRef.current) {
+        void saveNoteAction({
           id: noteIdRef.current,
           title: titleRef.current,
-          content: pendingContentRef.current,
+          content: editor.document as Block[],
         });
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleTitleChange(e: React.ChangeEvent<HTMLInputElement>) {
