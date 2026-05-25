@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect, useRef, useTransition } from "react";
-import { Plus, Trash2, RefreshCw, TrendingUp, Upload, Search, X } from "lucide-react";
+import { Plus, Trash2, RefreshCw, TrendingUp, Upload, Search, X, Mail } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import {
   addHoldingAction, deleteHoldingAction, fetchPricesAction,
   searchSymbolsAction,
 } from "@/app/actions/investments";
+import { scanGmailHoldingsAction, importGmailPositionsAction } from "@/app/actions/gmail-holdings";
 import { CRYPTO_IDS, type Holding, type PriceData, type SearchResult } from "@/lib/investments";
+import type { ParsedPosition } from "@/lib/google/gmail";
 
 const COLORS = ["#C8900A","#4ADE80","#60A5FA","#F87171","#A78BFA","#FB923C","#34D399","#F472B6","#FBBF24","#38BDF8"];
 
@@ -83,6 +85,13 @@ export function InvestmentsShell({ initialHoldings }: Props) {
   // CSV
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [csvRows, setCsvRows] = useState<ParsedCSVHolding[] | null>(null);
+
+  // Gmail scan
+  const [gmailPositions, setGmailPositions]   = useState<ParsedPosition[] | null>(null);
+  const [gmailScanning, setGmailScanning]     = useState(false);
+  const [gmailError, setGmailError]           = useState("");
+  const [gmailEmailCount, setGmailEmailCount] = useState(0);
+  const [gmailSkip, setGmailSkip]             = useState<Set<string>>(new Set());
 
   // Keep holdingsRef current so the interval always sees fresh data
   useEffect(() => { holdingsRef.current = holdings; }, [holdings]);
@@ -165,6 +174,43 @@ export function InvestmentsShell({ initialHoldings }: Props) {
     });
   }
 
+  // ── Gmail scan ───────────────────────────────────────────────────────────
+  async function handleGmailScan() {
+    setGmailScanning(true);
+    setGmailError("");
+    setGmailPositions(null);
+    const res = await scanGmailHoldingsAction();
+    setGmailScanning(false);
+    if ("error" in res) { setGmailError(res.error); return; }
+    setGmailPositions(res.positions);
+    setGmailEmailCount(res.emailsScanned);
+    // Pre-skip tickers already in portfolio
+    const existing = new Set(holdings.map(h => h.ticker.toUpperCase()));
+    setGmailSkip(existing);
+  }
+
+  function handleGmailImport() {
+    if (!gmailPositions?.length) return;
+    startTransition(async () => {
+      const res = await importGmailPositionsAction(gmailPositions, Array.from(gmailSkip));
+      if ("error" in res) return;
+      // Reload holdings via getHoldingsAction equivalent — refetch page data by reloading
+      setGmailPositions(null);
+      setGmailError("");
+      // Optimistically add imported positions to local state
+      const toAdd = gmailPositions.filter(p => !gmailSkip.has(p.ticker.toUpperCase()));
+      const added: Holding[] = toAdd.map(p => ({
+        id: crypto.randomUUID(),
+        ticker: p.ticker, name: p.name,
+        asset_type: "stock" as const,
+        quantity: p.quantity, cost_basis: p.avgCostBasis,
+      }));
+      const next = [...added, ...holdings];
+      setHoldings(next); holdingsRef.current = next;
+      void loadPrices(next, false);
+    });
+  }
+
   // ── Portfolio math ───────────────────────────────────────────────────────
   const totalValue = holdings.reduce((s, h) => s + Number(h.quantity) * (prices[h.ticker]?.price ?? 0), 0);
   const totalCost  = holdings.reduce((s, h) => s + Number(h.quantity) * Number(h.cost_basis), 0);
@@ -208,6 +254,11 @@ export function InvestmentsShell({ initialHoldings }: Props) {
             style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,235,180,0.1)", color: "rgba(245,240,232,0.5)" }}>
             <Upload className="w-3.5 h-3.5" /> CSV
           </button>
+          <button onClick={() => void handleGmailScan()} disabled={gmailScanning}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium disabled:opacity-50"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,235,180,0.1)", color: "rgba(245,240,232,0.5)" }}>
+            <Mail className="w-3.5 h-3.5" /> {gmailScanning ? "Scanning…" : "Gmail"}
+          </button>
           <button onClick={() => { setShowSearch(v => !v); if (showSearch) resetSearch(); }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium"
             style={{ background: "rgba(200,144,10,0.12)", border: "1px solid rgba(200,144,10,0.3)", color: "#C8900A" }}>
@@ -215,6 +266,90 @@ export function InvestmentsShell({ initialHoldings }: Props) {
           </button>
         </div>
       </div>
+
+      {/* ── Gmail error ── */}
+      {gmailError && (
+        <div className="mb-4 px-4 py-3 rounded-xl flex items-center justify-between"
+          style={{ background: "rgba(248,113,113,0.07)", border: "1px solid rgba(248,113,113,0.2)" }}>
+          <p className="text-xs" style={{ color: "#F87171" }}>{gmailError}</p>
+          <button onClick={() => setGmailError("")}><X className="w-3.5 h-3.5" style={{ color: "rgba(248,113,113,0.6)" }} /></button>
+        </div>
+      )}
+
+      {/* ── Gmail preview ── */}
+      {gmailPositions !== null && (
+        <div className="mb-6 p-5 rounded-2xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,235,180,0.1)" }}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-sm font-semibold" style={{ color: "#F5F0E8" }}>
+                {gmailPositions.length > 0
+                  ? `${gmailPositions.length} position${gmailPositions.length !== 1 ? "s" : ""} found`
+                  : "No positions found in trade emails"}
+              </p>
+              <p className="text-[10px] mt-0.5" style={{ color: "rgba(245,240,232,0.35)" }}>
+                Parsed from {gmailEmailCount} Robinhood email{gmailEmailCount !== 1 ? "s" : ""} · uncheck any you want to skip
+              </p>
+            </div>
+            <button onClick={() => { setGmailPositions(null); setGmailError(""); }}>
+              <X className="w-4 h-4" style={{ color: "rgba(245,240,232,0.3)" }} />
+            </button>
+          </div>
+
+          {gmailPositions.length > 0 && (
+            <>
+              <div className="flex flex-col gap-1.5 mb-4 max-h-64 overflow-y-auto">
+                {gmailPositions.map((pos) => {
+                  const isSkipped = gmailSkip.has(pos.ticker.toUpperCase());
+                  const alreadyOwned = holdings.some(h => h.ticker.toUpperCase() === pos.ticker.toUpperCase());
+                  return (
+                    <label key={pos.ticker}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all"
+                      style={{
+                        background: isSkipped ? "transparent" : "rgba(255,255,255,0.03)",
+                        border: `1px solid ${isSkipped ? "rgba(255,255,255,0.05)" : "rgba(255,235,180,0.08)"}`,
+                        opacity: isSkipped ? 0.45 : 1,
+                      }}>
+                      <input type="checkbox" checked={!isSkipped}
+                        onChange={() => setGmailSkip(prev => {
+                          const next = new Set(prev);
+                          if (next.has(pos.ticker)) next.delete(pos.ticker);
+                          else next.add(pos.ticker);
+                          return next;
+                        })}
+                        className="accent-[#C8900A]" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold" style={{ color: "#F5F0E8" }}>{pos.ticker}</span>
+                          <span className="text-[10px] truncate" style={{ color: "rgba(245,240,232,0.4)" }}>{pos.name}</span>
+                          {alreadyOwned && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(248,113,113,0.12)", color: "#F87171" }}>
+                              already added
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] mt-0.5" style={{ color: "rgba(245,240,232,0.3)" }}>
+                          {pos.quantity} shares · avg ${pos.avgCostBasis.toFixed(2)} · {pos.orderCount} order{pos.orderCount !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => { setGmailPositions(null); setGmailError(""); }}
+                  className="px-4 py-2 rounded-xl text-xs"
+                  style={{ color: "rgba(245,240,232,0.4)" }}>Cancel</button>
+                <button onClick={handleGmailImport}
+                  disabled={isPending || gmailPositions.every(p => gmailSkip.has(p.ticker.toUpperCase()))}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold disabled:opacity-40"
+                  style={{ background: "rgba(200,144,10,0.2)", color: "#C8900A" }}>
+                  {isPending ? "Importing…" : `Import ${gmailPositions.filter(p => !gmailSkip.has(p.ticker.toUpperCase())).length} holding${gmailPositions.filter(p => !gmailSkip.has(p.ticker.toUpperCase())).length !== 1 ? "s" : ""}`}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* ── CSV preview ── */}
       {csvRows !== null && (
