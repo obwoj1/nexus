@@ -1,9 +1,9 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { scanRobinhoodTrades, aggregateTrades } from "@/lib/google/gmail";
+import { scanRobinhoodTrades, aggregateTrades, debugFirstRobinhoodEmail } from "@/lib/google/gmail";
 import { addHoldingAction } from "./investments";
-import type { ParsedPosition } from "@/lib/google/gmail";
+import type { ParsedPosition, EmailDebugInfo } from "@/lib/google/gmail";
 
 export async function scanGmailHoldingsAction(): Promise<
   { positions: ParsedPosition[]; emailsScanned: number } | { error: string }
@@ -28,6 +28,19 @@ export async function scanGmailHoldingsAction(): Promise<
       return { error: "Gmail not connected — sign in again to reconnect Google" };
     }
     return { error: "Failed to scan Gmail — try again" };
+  }
+}
+
+export async function debugGmailEmailAction(): Promise<EmailDebugInfo | { error: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized" };
+  try {
+    const result = await debugFirstRobinhoodEmail(user.id);
+    if (!result) return { error: "No email found or fetch failed" };
+    return result;
+  } catch (err) {
+    return { error: String(err) };
   }
 }
 
