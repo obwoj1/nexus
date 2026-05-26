@@ -330,6 +330,14 @@ export interface ScanResult {
   emailsFound: number;
 }
 
+export interface EmailDebugInfo {
+  subject: string;
+  snippet: string;
+  mimeType: string;
+  bodyText: string;
+  regexMatch: boolean;
+}
+
 export async function scanRobinhoodTrades(userId: string, maxEmails = 150): Promise<ScanResult> {
   const token = await getValidGoogleToken(userId);
 
@@ -376,6 +384,46 @@ export async function scanRobinhoodTrades(userId: string, maxEmails = 150): Prom
   return {
     trades: trades.filter((t): t is RobinhoodTrade => t !== null),
     emailsFound,
+  };
+}
+
+export async function debugFirstRobinhoodEmail(userId: string): Promise<EmailDebugInfo | null> {
+  const token = await getValidGoogleToken(userId);
+
+  const listUrl = new URL("https://www.googleapis.com/gmail/v1/users/me/messages");
+  listUrl.searchParams.set("maxResults", "1");
+  listUrl.searchParams.set("q", "from:robinhood.com OR from:robinhood OR (robinhood order)");
+
+  const listRes = await fetch(listUrl.toString(), { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+  if (!listRes.ok) return null;
+
+  const listData: GMessageListResponse = await listRes.json();
+  if (!listData.messages?.length) return null;
+
+  const res = await fetch(
+    `https://www.googleapis.com/gmail/v1/users/me/messages/${listData.messages[0].id}?format=full`,
+    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+  );
+  if (!res.ok) return null;
+
+  const detail: GFullMessage = await res.json();
+  if (!detail.payload) return null;
+
+  const headers = detail.payload.headers ?? [];
+  const get = (name: string) => headers.find((h) => h.name === name)?.value ?? "";
+
+  let bodyText = "";
+  try { bodyText = extractBodyText(detail.payload); } catch (e) { bodyText = `ERROR: ${String(e)}`; }
+
+  const full = [bodyText, detail.snippet ?? "", get("Subject")].filter(Boolean).join(" ").replace(/\s+/g, " ");
+  const regexMatch = /order to (buy|sell)\s+\$[\d.,]+\s+of\s+([A-Z]{1,6})\b.*?for\s+([\d.]+)\s+shares?,\s+at an average price of\s+\$?([\d.,]+)\s+per share/i.test(full);
+
+  return {
+    subject:    get("Subject"),
+    snippet:    detail.snippet ?? "",
+    mimeType:   detail.payload.mimeType ?? "unknown",
+    bodyText:   bodyText.slice(0, 1000),
+    regexMatch,
   };
 }
 
