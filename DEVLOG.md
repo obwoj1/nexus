@@ -6,6 +6,53 @@
 
 ---
 
+## Session 16 — Phase 7: Global Claudia AI (2026-05-26)
+
+**Goal:** Build the AI layer — Claudia accessible from everywhere in the app, not just the Tracking section.
+
+**Done:**
+
+**Context engine (`lib/ai/nexusContext.ts`):**
+- Pulls all data in one parallel Promise.all: habits + logs, subscriptions, goals, reading list, health metrics, important dates, investment holdings, workout sessions, recent notes, and calendar events (via Google API)
+- Calendar is best-effort — skips silently if token is missing or expired
+- Formats everything into a readable context string passed to Claude as the system prompt
+- This is now the single source of truth for all AI features — no more per-section context builders
+
+**Global Claudia action (`app/actions/claudia.ts`):**
+- Two modes: `chat` (responds to conversation history) and `briefing` (generates a proactive daily summary)
+- System prompt frames Claudia as a sharp personal AI who knows the user's actual data and references real numbers
+- Replaces the tracking-specific `claudiaTracking.ts` for global use (tracking chat still uses its own for now)
+
+**Floating chat (`components/layout/ClaudiaChat.tsx`):**
+- Gold sparkle FAB button fixed to bottom-right on every page
+- Click opens a slide-up chat panel (Framer Motion spring animation)
+- First open triggers the briefing automatically — Claudia introduces herself with a data-driven summary
+- sessionStorage persists last 40 messages for the session
+- Mounted in `app/(app)/layout.tsx` so it's present across all routes
+
+**Dashboard briefing card:**
+- Added to top of dashboard grid above the greeting
+- Calls `askClaudiaAction` in briefing mode on mount
+- Caches result in sessionStorage keyed by today's date — only re-fetches once per day
+- Shows animated typing dots while loading
+
+**Dashboard greeting rotation:**
+- Replaced static "Good morning/afternoon/evening" with 15 funny/flirty lines split by time window
+- Cycles by hour so it rotates through the day without being random
+
+**Gmail debug panel:**
+- "Show debug info →" link appears under the parse-failure error
+- Calls `debugGmailEmailAction` to fetch first Robinhood email and dump MIME type, snippet, decoded body, and regex match result
+- Still pending: use this output to confirm whether body extraction or regex is the failure point
+
+**What's next:**
+- Use Gmail debug panel to fix trade parsing
+- Consider adding Claudia to Notes (summarize note, expand section) as a floating toolbar
+- Web push notifications
+- Investment price alerts
+
+---
+
 ## Session 15 — Investments: Gmail sync + page speed (2026-05-25)
 
 **Goal:** Replace the scrapped Robinhood Bearer token flow with something that actually works. Make page transitions feel faster.

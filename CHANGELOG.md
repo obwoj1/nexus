@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Added — Phase 7: Global Claudia AI + dashboard briefing (2026-05-26, Session 16)
+- feat(ai): buildNexusContext — pulls habits, goals, health, subscriptions, reading, dates, investments, workouts, notes, calendar into one context block
+- feat(ai): global askClaudiaAction with chat and briefing modes — replaces tracking-only version
+- feat(ai): ClaudiaChat floating panel — gold sparkle button on every page, slides up on click, greeting briefing on first open, sessionStorage history
+- feat(ai): Claudia briefing card on dashboard — daily AI summary cached per day, auto-loads on mount
+- feat(dashboard): time-based greeting rotation — 15 funny/flirty lines split across morning, afternoon, evening windows
+- feat(debug): Gmail email debug panel — "Show debug info" link when parsing fails, shows MIME type, decoded body, regex match result
+
 ### Added — Gmail trade parsing, loading skeletons, Robinhood cleanup (2026-05-25, Session 15)
 - feat(investments): Gmail "Scan" button — scans up to 100 Robinhood trade confirmation emails, parses buy/sell, aggregates into net positions with weighted average cost basis, shows preview with per-ticker checkboxes before import
 - feat(investments): importGmailPositionsAction — skips already-owned tickers by default, imports selected positions to holdings table
