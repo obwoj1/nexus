@@ -56,7 +56,34 @@ function GreetingSection({ name }: { name?: string }) {
 
   const greeting = (() => {
     const h = new Date().getHours();
-    return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+    const firstName = name?.split(" ")[0] ?? "";
+
+    const morning = [
+      `What's cooking, good looking`,
+      `Rise and shine, superstar`,
+      `Good morning, gorgeous`,
+      `Hey, the day got better already`,
+      `Morning — let's run it`,
+    ];
+    const afternoon = [
+      `Hey there, beautiful`,
+      `Hiya — still going strong`,
+      `Look who's thriving`,
+      `The afternoon just got way better`,
+      `Keep that energy, you're doing great`,
+    ];
+    const evening = [
+      `Evening, dear — you made it`,
+      `Hey night owl, still at it?`,
+      `Look at you, still going`,
+      `Evening — you ate today, right?`,
+      `The day's almost yours — finish strong`,
+    ];
+
+    const pool = h < 12 ? morning : h < 18 ? afternoon : evening;
+    const idx = h % pool.length;
+    const line = pool[idx];
+    return firstName ? `${line}, ${firstName}` : line;
   })();
 
   return (
@@ -75,7 +102,7 @@ function GreetingSection({ name }: { name?: string }) {
         <div>
           <p className="text-sm mb-1" style={{ color: "rgba(245,240,232,0.5)" }}>{date}</p>
           <h2 className="text-2xl font-semibold tracking-tight" style={{ color: "#F5F0E8" }}>
-            {greeting}{name ? `, ${name.split(" ")[0]}` : ""} 👋
+            {greeting} 👋
           </h2>
         </div>
         <div className="text-right">
