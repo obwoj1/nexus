@@ -7,9 +7,9 @@ import {
   addHoldingAction, deleteHoldingAction, fetchPricesAction,
   searchSymbolsAction,
 } from "@/app/actions/investments";
-import { scanGmailHoldingsAction, importGmailPositionsAction } from "@/app/actions/gmail-holdings";
+import { scanGmailHoldingsAction, importGmailPositionsAction, debugGmailEmailAction } from "@/app/actions/gmail-holdings";
 import { CRYPTO_IDS, type Holding, type PriceData, type SearchResult } from "@/lib/investments";
-import type { ParsedPosition } from "@/lib/google/gmail";
+import type { ParsedPosition, EmailDebugInfo } from "@/lib/google/gmail";
 
 const COLORS = ["#C8900A","#4ADE80","#60A5FA","#F87171","#A78BFA","#FB923C","#34D399","#F472B6","#FBBF24","#38BDF8"];
 
@@ -92,6 +92,7 @@ export function InvestmentsShell({ initialHoldings }: Props) {
   const [gmailError, setGmailError]           = useState("");
   const [gmailEmailCount, setGmailEmailCount] = useState(0);
   const [gmailSkip, setGmailSkip]             = useState<Set<string>>(new Set());
+  const [gmailDebug, setGmailDebug]           = useState<EmailDebugInfo | null>(null);
 
   // Keep holdingsRef current so the interval always sees fresh data
   useEffect(() => { holdingsRef.current = holdings; }, [holdings]);
@@ -172,6 +173,14 @@ export function InvestmentsShell({ initialHoldings }: Props) {
       setCsvRows(null);
       void loadPrices(next, false);
     });
+  }
+
+  // ── Gmail debug ──────────────────────────────────────────────────────────
+  async function handleGmailDebug() {
+    setGmailDebug(null);
+    const res = await debugGmailEmailAction();
+    if ("error" in res) { setGmailError(res.error); return; }
+    setGmailDebug(res);
   }
 
   // ── Gmail scan ───────────────────────────────────────────────────────────
@@ -269,10 +278,37 @@ export function InvestmentsShell({ initialHoldings }: Props) {
 
       {/* ── Gmail error ── */}
       {gmailError && (
-        <div className="mb-4 px-4 py-3 rounded-xl flex items-center justify-between"
-          style={{ background: "rgba(248,113,113,0.07)", border: "1px solid rgba(248,113,113,0.2)" }}>
-          <p className="text-xs" style={{ color: "#F87171" }}>{gmailError}</p>
-          <button onClick={() => setGmailError("")}><X className="w-3.5 h-3.5" style={{ color: "rgba(248,113,113,0.6)" }} /></button>
+        <div className="mb-4 px-4 py-3 rounded-xl" style={{ background: "rgba(248,113,113,0.07)", border: "1px solid rgba(248,113,113,0.2)" }}>
+          <div className="flex items-center justify-between">
+            <p className="text-xs" style={{ color: "#F87171" }}>{gmailError}</p>
+            <button onClick={() => { setGmailError(""); setGmailDebug(null); }}>
+              <X className="w-3.5 h-3.5" style={{ color: "rgba(248,113,113,0.6)" }} />
+            </button>
+          </div>
+          {gmailError.includes("couldn't parse") && (
+            <button onClick={() => void handleGmailDebug()}
+              className="mt-2 text-[10px] underline underline-offset-2"
+              style={{ color: "rgba(248,113,113,0.6)" }}>
+              Show debug info →
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Gmail debug panel ── */}
+      {gmailDebug && (
+        <div className="mb-4 p-4 rounded-xl text-[10px] font-mono overflow-x-auto"
+          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,235,180,0.1)", color: "rgba(245,240,232,0.5)" }}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-bold text-xs" style={{ color: "rgba(245,240,232,0.7)" }}>Email debug</span>
+            <button onClick={() => setGmailDebug(null)}><X className="w-3 h-3" /></button>
+          </div>
+          <p><span style={{ color: "#C8900A" }}>mimeType:</span> {gmailDebug.mimeType}</p>
+          <p><span style={{ color: "#C8900A" }}>subject:</span> {gmailDebug.subject}</p>
+          <p><span style={{ color: "#C8900A" }}>snippet:</span> {gmailDebug.snippet}</p>
+          <p><span style={{ color: "#C8900A" }}>regex match:</span> {gmailDebug.regexMatch ? "✓ YES" : "✗ NO"}</p>
+          <p className="mt-2" style={{ color: "#C8900A" }}>decoded body (first 1000 chars):</p>
+          <pre className="whitespace-pre-wrap break-all mt-1" style={{ color: "rgba(245,240,232,0.4)" }}>{gmailDebug.bodyText || "(empty)"}</pre>
         </div>
       )}
 
