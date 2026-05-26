@@ -1,13 +1,16 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Calendar, Mail, Dumbbell, Shirt, FileText, Activity, Clock, AlertCircle } from "lucide-react";
+import { Calendar, Mail, Dumbbell, Shirt, FileText, Activity, Clock, AlertCircle, Sparkles } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PriorityCard } from "@/components/dashboard/PriorityCard";
+import { askClaudiaAction } from "@/app/actions/claudia";
 import type { CalendarEvent } from "@/lib/google/calendar";
 import type { InboxStats } from "@/lib/google/gmail";
+
+const BRIEFING_KEY = "nexus-claudia-briefing";
 
 const card = {
   hidden: { opacity: 0, y: 20 },
@@ -210,6 +213,63 @@ function InboxWidget({ stats }: { stats: InboxStats | null }) {
 }
 
 
+function BriefingCard() {
+  const [text, setText] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Use today's date as cache key so it refreshes daily
+    const today = new Date().toLocaleDateString("en-CA");
+    const cached = sessionStorage.getItem(BRIEFING_KEY);
+    if (cached) {
+      try {
+        const { date, content } = JSON.parse(cached) as { date: string; content: string };
+        if (date === today) { setText(content); setLoading(false); return; }
+      } catch { /* invalid cache */ }
+    }
+    void (async () => {
+      const res = await askClaudiaAction([], "briefing");
+      if (res.result) {
+        setText(res.result);
+        sessionStorage.setItem(BRIEFING_KEY, JSON.stringify({ date: today, content: res.result }));
+      }
+      setLoading(false);
+    })();
+  }, []);
+
+  return (
+    <motion.div variants={card} initial="hidden" animate="visible" custom={0}
+      className="col-span-2 md:col-span-3 rounded-2xl p-5"
+      style={{
+        background: "linear-gradient(135deg, rgba(30,18,0,0.9) 0%, rgba(20,14,0,0.95) 100%)",
+        border: "1px solid rgba(200,144,10,0.2)",
+        boxShadow: "0 0 40px -12px rgba(200,144,10,0.2)",
+      }}>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-6 h-6 rounded-full flex items-center justify-center"
+          style={{ background: "linear-gradient(135deg, #C8900A, #F5CE58)" }}>
+          <Sparkles className="w-3 h-3 text-black" />
+        </div>
+        <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: "rgba(200,144,10,0.8)" }}>
+          Claudia&apos;s Briefing
+        </p>
+      </div>
+      {loading ? (
+        <div className="flex gap-1.5 items-center py-1">
+          {[0,1,2].map((i) => (
+            <span key={i} className="w-1.5 h-1.5 rounded-full animate-bounce"
+              style={{ background: "rgba(200,144,10,0.5)", animationDelay: `${i * 0.15}s` }} />
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm leading-relaxed" style={{ color: "rgba(245,240,232,0.75)" }}>
+          {text ?? "Nothing to report right now."}
+        </p>
+      )}
+    </motion.div>
+  );
+}
+
 interface Props {
   name?: string;
   todayEvents: CalendarEvent[] | null;
@@ -219,6 +279,9 @@ interface Props {
 export function DashboardWidgets({ name, todayEvents, inboxStats }: Props) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 max-w-5xl">
+      {/* Claudia briefing — full width */}
+      <BriefingCard />
+
       {/* Greeting — full width on mobile, col-span-2 on desktop */}
       <div className="col-span-2 md:col-span-1">
         <GreetingSection name={name} />
