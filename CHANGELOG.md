@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed — Notes journal duplicate entries (2026-05-27, Session 17)
+- fix(notes): journal auto-create now queries all rows per title and deletes extras on page load — cleans up both today's and all past duplicate journal entries
+- fix(notes): NotesList Recent section deduplicates by title client-side as a safety net
+
 ### Added — Phase 7: Global Claudia AI + dashboard briefing (2026-05-26, Session 16)
 - feat(ai): buildNexusContext — pulls habits, goals, health, subscriptions, reading, dates, investments, workouts, notes, calendar into one context block
 - feat(ai): global askClaudiaAction with chat and briefing modes — replaces tracking-only version
