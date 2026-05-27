@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixed — CSV import, sleep input, notes dedup (2026-05-27, Session 17)
+- fix(investments): rewrite Robinhood CSV parser — handles transaction log format (Buy/Sell aggregation into net positions), full RFC4180 quoted-field parser for multi-line Description (CUSIP on line 2), weighted average cost basis
+- feat(tracking): sleep input replaced with Slept At / Woke At time pickers — hours auto-calculated, midnight crossover handled
+- fix(notes): journal duplicate entries — clean up on page load (DB dedup + client-side title dedup in Recent section)
+
 ### Fixed — Notes journal duplicate entries (2026-05-27, Session 17)
 - fix(notes): journal auto-create now queries all rows per title and deletes extras on page load — cleans up both today's and all past duplicate journal entries
 - fix(notes): NotesList Recent section deduplicates by title client-side as a safety net

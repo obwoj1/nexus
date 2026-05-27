@@ -23,6 +23,7 @@ Next.js 15 · TypeScript · Tailwind v4 · shadcn/ui · Supabase · Vercel · An
 | 5 | Workouts — Log, History, Templates, Progress charts | ✅ Live |
 | 5b | Wardrobe — Gemini Vision categorize, Ask Claudia stylist, Saved Fits | ✅ Live |
 | 6 | Investments — Holdings, Live prices (Finnhub + CoinGecko), CSV import, Gmail trade sync | ✅ Live |
+| 7 | Global Claudia AI — floating chat (every page), dashboard briefing card, full app context | ✅ Live |
 
 ## Setup
 
