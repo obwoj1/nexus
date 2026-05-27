@@ -12,25 +12,40 @@ interface HealthMetric {
 
 const MOOD_LABELS = ["", "😞", "😕", "😐", "🙂", "😄"];
 
+function computeSleepHours(sleepTime: string, wakeTime: string): number | null {
+  if (!sleepTime || !wakeTime) return null;
+  const [sh, sm] = sleepTime.split(":").map(Number);
+  const [wh, wm] = wakeTime.split(":").map(Number);
+  let sleepMins = sh * 60 + (sm ?? 0);
+  let wakeMins  = wh * 60 + (wm ?? 0);
+  if (wakeMins <= sleepMins) wakeMins += 24 * 60; // crossed midnight
+  return Math.round(((wakeMins - sleepMins) / 60) * 10) / 10;
+}
+
 export function HealthSection({ today, healthRows }: { today: string; healthRows: HealthMetric[] }) {
   const todayRow = healthRows.find((r) => r.date === today) ?? null;
+  const [sleepTime, setSleepTime] = useState("");
+  const [wakeTime,  setWakeTime]  = useState("");
   const [form, setForm] = useState({
-    sleep_hours: todayRow?.sleep_hours?.toString() ?? "",
-    water_oz: todayRow?.water_oz?.toString() ?? "",
-    mood: todayRow?.mood ?? 0,
+    water_oz:   todayRow?.water_oz?.toString()   ?? "",
+    mood:       todayRow?.mood                   ?? 0,
     weight_lbs: todayRow?.weight_lbs?.toString() ?? "",
   });
   const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  const computedSleepHours = computeSleepHours(sleepTime, wakeTime);
+  // Fall back to existing saved value when times haven't been entered yet
+  const sleepHoursToSave = computedSleepHours ?? todayRow?.sleep_hours ?? null;
+
   function handleSave() {
     startTransition(async () => {
       await upsertHealthAction({
-        date: today,
-        sleep_hours: form.sleep_hours ? parseFloat(form.sleep_hours) : null,
-        water_oz: form.water_oz ? parseInt(form.water_oz) : null,
-        mood: form.mood || null,
-        weight_lbs: form.weight_lbs ? parseFloat(form.weight_lbs) : null,
+        date:        today,
+        sleep_hours: sleepHoursToSave,
+        water_oz:    form.water_oz    ? parseInt(form.water_oz)    : null,
+        mood:        form.mood        || null,
+        weight_lbs:  form.weight_lbs  ? parseFloat(form.weight_lbs)  : null,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -42,10 +57,10 @@ export function HealthSection({ today, healthRows }: { today: string; healthRows
   const healthChartData = [...healthRows]
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((r) => ({
-      date: new Date(r.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      date:  new Date(r.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }),
       sleep: r.sleep_hours ?? undefined,
-      mood: r.mood ?? undefined,
-      water: r.water_oz ?? undefined,
+      mood:  r.mood        ?? undefined,
+      water: r.water_oz    ?? undefined,
     }));
 
   return (
@@ -59,11 +74,48 @@ export function HealthSection({ today, healthRows }: { today: string; healthRows
       <div className="p-6 rounded-2xl mb-8" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,235,180,0.08)" }}>
         <p className="text-xs uppercase tracking-widest mb-5" style={{ color: "rgba(200,144,10,0.6)" }}>Today's log</p>
 
+        {/* Sleep — bedtime + wake time → auto-calculated hours */}
+        <div className="mb-5">
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-[10px] uppercase tracking-widest" style={{ color: "rgba(245,240,232,0.35)" }}>
+              Sleep
+            </label>
+            {computedSleepHours !== null ? (
+              <span className="text-xs font-semibold" style={{ color: "#C8900A" }}>
+                {computedSleepHours} hrs
+              </span>
+            ) : todayRow?.sleep_hours != null ? (
+              <span className="text-xs" style={{ color: "rgba(245,240,232,0.3)" }}>
+                {todayRow.sleep_hours} hrs saved
+              </span>
+            ) : null}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: "Slept at",  value: sleepTime,  setter: setSleepTime },
+              { label: "Woke at",   value: wakeTime,   setter: setWakeTime  },
+            ].map(({ label, value, setter }) => (
+              <div key={label}>
+                <p className="text-[9px] uppercase tracking-widest mb-1" style={{ color: "rgba(245,240,232,0.25)" }}>{label}</p>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,235,180,0.08)" }}>
+                  <input
+                    type="time"
+                    value={value}
+                    onChange={(e) => setter(e.target.value)}
+                    className="flex-1 bg-transparent text-sm outline-none"
+                    style={{ color: "#F5F0E8", colorScheme: "dark" }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-5 mb-6">
           {[
-            { key: "sleep_hours", label: "Sleep", unit: "hrs", placeholder: "7.5", type: "number", step: "0.5" },
-            { key: "water_oz",    label: "Water",  unit: "oz",  placeholder: "64",  type: "number", step: "8" },
-            { key: "weight_lbs",  label: "Weight", unit: "lbs", placeholder: "165", type: "number", step: "0.1" },
+            { key: "water_oz",   label: "Water",  unit: "oz",  placeholder: "64",  step: "8" },
+            { key: "weight_lbs", label: "Weight", unit: "lbs", placeholder: "165", step: "0.1" },
           ].map((field) => (
             <div key={field.key}>
               <label className="text-[10px] uppercase tracking-widest block mb-1.5" style={{ color: "rgba(245,240,232,0.35)" }}>
@@ -72,7 +124,7 @@ export function HealthSection({ today, healthRows }: { today: string; healthRows
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
                 style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,235,180,0.08)" }}>
                 <input
-                  type={field.type} step={field.step}
+                  type="number" step={field.step}
                   value={form[field.key as keyof typeof form] as string}
                   onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
                   placeholder={field.placeholder}
@@ -107,7 +159,11 @@ export function HealthSection({ today, healthRows }: { today: string; healthRows
 
         <button onClick={handleSave} disabled={isPending}
           className="px-4 py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-40"
-          style={{ background: saved ? "rgba(74,222,128,0.15)" : "rgba(200,144,10,0.15)", border: `1px solid ${saved ? "rgba(74,222,128,0.3)" : "rgba(200,144,10,0.3)"}`, color: saved ? "#4ADE80" : "#C8900A" }}>
+          style={{
+            background: saved ? "rgba(74,222,128,0.15)" : "rgba(200,144,10,0.15)",
+            border: `1px solid ${saved ? "rgba(74,222,128,0.3)" : "rgba(200,144,10,0.3)"}`,
+            color: saved ? "#4ADE80" : "#C8900A",
+          }}>
           {isPending ? "Saving…" : saved ? "Saved ✓" : "Save today's log"}
         </button>
       </div>
@@ -125,9 +181,9 @@ export function HealthSection({ today, healthRows }: { today: string; healthRows
                 </span>
                 <div className="flex items-center gap-4 text-xs" style={{ color: "rgba(245,240,232,0.6)" }}>
                   {row.sleep_hours != null && <span>💤 {row.sleep_hours}h</span>}
-                  {row.water_oz != null && <span>💧 {row.water_oz}oz</span>}
-                  {row.mood != null && <span>{MOOD_LABELS[row.mood]}</span>}
-                  {row.weight_lbs != null && <span>⚖️ {row.weight_lbs}lbs</span>}
+                  {row.water_oz    != null && <span>💧 {row.water_oz}oz</span>}
+                  {row.mood        != null && <span>{MOOD_LABELS[row.mood]}</span>}
+                  {row.weight_lbs  != null && <span>⚖️ {row.weight_lbs}lbs</span>}
                 </div>
               </div>
             ))}
@@ -163,7 +219,7 @@ export function HealthSection({ today, healthRows }: { today: string; healthRows
                   formatter={(value) => <span style={{ color: "rgba(245,240,232,0.5)", fontSize: 10 }}>{value}</span>}
                 />
                 <Line yAxisId="sleep" type="monotone" dataKey="sleep" name="Sleep (h)" stroke="#C8900A" strokeWidth={2} dot={{ fill: "#C8900A", r: 3 }} connectNulls />
-                <Line yAxisId="mood" type="monotone" dataKey="mood" name="Mood /5" stroke="#60A5FA" strokeWidth={2} dot={{ fill: "#60A5FA", r: 3 }} connectNulls />
+                <Line yAxisId="mood"  type="monotone" dataKey="mood"  name="Mood /5"   stroke="#60A5FA" strokeWidth={2} dot={{ fill: "#60A5FA", r: 3 }} connectNulls />
               </LineChart>
             </ResponsiveContainer>
           </div>
