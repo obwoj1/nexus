@@ -117,10 +117,17 @@ export function NotesList({
 
   // Today's entry
   const journalNotes = notes.filter((n) => n.id === todayJournalId);
-  // Past journal entries — last 7, excluding today
+  // Past journal entries — last 7, excluding today, deduplicated by title
+  const seenTitles = new Set<string>();
   const recentJournalNotes = notes
     .filter((n) => isJournalNote(titleOverride?.[n.id] ?? n.title) && n.id !== todayJournalId)
     .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    .filter((n) => {
+      const title = titleOverride?.[n.id] ?? n.title;
+      if (seenTitles.has(title)) return false;
+      seenTitles.add(title);
+      return true;
+    })
     .slice(0, 7);
 
   const q = search.toLowerCase();
