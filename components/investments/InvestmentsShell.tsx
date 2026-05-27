@@ -27,37 +27,91 @@ interface ParsedCSVHolding {
   quantity: number; cost_basis: number;
 }
 
-function parseRobinhoodCSV(text: string): ParsedCSVHolding[] {
-  const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
-  if (lines.length < 2) return [];
-  function parseLine(line: string): string[] {
-    const cols: string[] = []; let cur = ""; let inQ = false;
-    for (const ch of line) {
-      if (ch === '"') { inQ = !inQ; continue; }
-      if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ""; continue; }
-      cur += ch;
+// Full RFC4180 CSV parser — handles quoted fields with embedded newlines (Robinhood's Description has CUSIP on line 2)
+function parseCSVRows(raw: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuote = false;
+  let i = 0;
+  while (i < raw.length) {
+    const ch = raw[i];
+    if (inQuote) {
+      if (ch === '"') {
+        if (raw[i + 1] === '"') { field += '"'; i += 2; continue; } // escaped double-quote
+        inQuote = false; i++; continue;
+      }
+      field += ch; i++; continue;
     }
-    cols.push(cur.trim()); return cols;
+    if (ch === '"') { inQuote = true; i++; continue; }
+    if (ch === ',') { row.push(field.trim()); field = ""; i++; continue; }
+    if (ch === '\n' || (ch === '\r' && raw[i + 1] === '\n')) {
+      row.push(field.trim()); field = "";
+      if (row.some(c => c)) rows.push(row);
+      row = [];
+      if (ch === '\r') i++;
+      i++; continue;
+    }
+    field += ch; i++;
   }
-  const headers = parseLine(lines[0]).map(h => h.toLowerCase().replace(/[^a-z ]/g, "").trim());
-  const idx = {
-    ticker: headers.findIndex(h => ["symbol","ticker","instrument"].includes(h)),
-    name:   headers.findIndex(h => ["name","description","company"].includes(h)),
-    qty:    headers.findIndex(h => h.includes("quantity") || h === "shares" || h === "qty"),
-    cost:   headers.findIndex(h => (h.includes("average") && (h.includes("cost") || h.includes("price"))) || h === "cost basis"),
-  };
-  if (idx.ticker === -1 || idx.qty === -1) return [];
-  return lines.slice(1).flatMap(line => {
-    const cols = parseLine(line);
-    const ticker = cols[idx.ticker]?.toUpperCase().replace(/[^A-Z0-9.]/g, "");
-    if (!ticker) return [];
-    const quantity = parseFloat(cols[idx.qty] ?? "0");
-    if (!quantity || quantity <= 0) return [];
-    const cost_basis = idx.cost >= 0 ? parseFloat(cols[idx.cost] ?? "0") || 0 : 0;
-    const name = (idx.name >= 0 && cols[idx.name]) ? cols[idx.name] : ticker;
-    const asset_type: "stock" | "crypto" = CRYPTO_IDS[ticker] ? "crypto" : "stock";
-    return [{ ticker, name, asset_type, quantity, cost_basis }];
-  });
+  if (field || row.length) { row.push(field.trim()); if (row.some(c => c)) rows.push(row); }
+  return rows;
+}
+
+// Robinhood activity CSV: transaction log — "Activity Date","Process Date","Settle Date","Instrument","Description","Trans Code","Quantity","Price","Amount"
+// We aggregate Buy/Sell rows into net positions with weighted average cost
+function parseRobinhoodCSV(text: string): ParsedCSVHolding[] {
+  const rows = parseCSVRows(text.trim());
+  if (rows.length < 2) return [];
+  const headers = rows[0].map(h => h.toLowerCase());
+
+  const instrIdx = headers.indexOf("instrument");
+  const descIdx  = headers.indexOf("description");
+  const transIdx = headers.indexOf("trans code");
+  const qtyIdx   = headers.indexOf("quantity");
+  const priceIdx = headers.indexOf("price");
+
+  if (instrIdx === -1 || transIdx === -1 || qtyIdx === -1) return [];
+
+  type Pos = { name: string; totalQty: number; totalCost: number };
+  const positions = new Map<string, Pos>();
+
+  for (const row of rows.slice(1)) {
+    const ticker = row[instrIdx]?.toUpperCase().replace(/[^A-Z0-9.]/g, "");
+    if (!ticker) continue;
+    const trans = row[transIdx]?.toUpperCase().trim();
+    if (trans !== "BUY" && trans !== "SELL") continue;
+
+    const qty = parseFloat(row[qtyIdx] ?? "0");
+    if (!qty || qty <= 0) continue;
+
+    // Price column is "$81.87" — strip $ and commas
+    const price = parseFloat((row[priceIdx] ?? "").replace(/[$,()]/g, "")) || 0;
+
+    // Description has CUSIP on line 2 — only keep first line
+    const name = (descIdx >= 0 ? row[descIdx]?.split("\n")[0]?.trim() : "") || ticker;
+
+    if (!positions.has(ticker)) positions.set(ticker, { name, totalQty: 0, totalCost: 0 });
+    const pos = positions.get(ticker)!;
+
+    if (trans === "BUY") {
+      pos.totalCost = (pos.totalCost * pos.totalQty + price * qty) / (pos.totalQty + qty);
+      pos.totalQty += qty;
+    } else {
+      pos.totalQty = Math.max(0, pos.totalQty - qty);
+      // cost basis (avg price) unchanged on sell
+    }
+  }
+
+  return Array.from(positions.entries())
+    .filter(([, pos]) => pos.totalQty > 0.000001)
+    .map(([ticker, pos]) => ({
+      ticker,
+      name: pos.name,
+      asset_type: (CRYPTO_IDS[ticker] ? "crypto" : "stock") as "stock" | "crypto",
+      quantity: Math.round(pos.totalQty * 1_000_000) / 1_000_000,
+      cost_basis: Math.round(pos.totalCost * 100) / 100,
+    }));
 }
 
 interface Props {
