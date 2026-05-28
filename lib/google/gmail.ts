@@ -1,4 +1,4 @@
-import { getValidGoogleToken } from "./tokens";
+import { getValidGoogleToken, getValidSecondaryGoogleToken } from "./tokens";
 
 export interface GmailMessage {
   id: string;
@@ -27,9 +27,7 @@ interface GMessageDetail {
 }
 interface GLabelDetail { messagesTotal?: number; messagesUnread?: number }
 
-export async function getInboxMessages(userId: string, limit = 20): Promise<GmailMessage[]> {
-  const token = await getValidGoogleToken(userId);
-
+async function fetchInboxMessages(token: string, limit = 20): Promise<GmailMessage[]> {
   const listUrl = new URL("https://www.googleapis.com/gmail/v1/users/me/messages");
   listUrl.searchParams.set("maxResults", String(limit));
   listUrl.searchParams.set("labelIds", "INBOX");
@@ -38,8 +36,7 @@ export async function getInboxMessages(userId: string, limit = 20): Promise<Gmai
     headers: { Authorization: `Bearer ${token}` },
     next: { revalidate: 60 },
   });
-
-  if (!listRes.ok) throw new Error("GMAIL_LIST_FAILED");
+  if (!listRes.ok) return [];
 
   const listData: GMessageListResponse = await listRes.json();
   if (!listData.messages?.length) return [];
@@ -65,22 +62,55 @@ export async function getInboxMessages(userId: string, limit = 20): Promise<Gmai
       } satisfies GmailMessage;
     })
   );
-
   return messages.filter((m): m is GmailMessage => m !== null);
 }
 
-export async function getInboxStats(userId: string): Promise<InboxStats> {
-  const token = await getValidGoogleToken(userId);
-
+async function fetchInboxStats(token: string): Promise<InboxStats> {
   const res = await fetch(
     "https://www.googleapis.com/gmail/v1/users/me/labels/INBOX",
     { headers: { Authorization: `Bearer ${token}` }, next: { revalidate: 60 } }
   );
-
-  if (!res.ok) throw new Error("GMAIL_STATS_FAILED");
-
+  if (!res.ok) return { total: 0, unread: 0 };
   const data: GLabelDetail = await res.json();
   return { total: data.messagesTotal ?? 0, unread: data.messagesUnread ?? 0 };
+}
+
+export async function getInboxMessages(userId: string, limit = 20): Promise<GmailMessage[]> {
+  const [primary, secondary] = await Promise.all([
+    getValidGoogleToken(userId),
+    getValidSecondaryGoogleToken(userId),
+  ]);
+
+  const [primaryMsgs, secondaryMsgs] = await Promise.all([
+    fetchInboxMessages(primary, limit),
+    secondary ? fetchInboxMessages(secondary, limit) : Promise.resolve([]),
+  ]);
+
+  // Merge and deduplicate by message ID, sort newest first
+  const seen = new Set<string>();
+  const merged = [...primaryMsgs, ...secondaryMsgs].filter((m) => {
+    if (seen.has(m.id)) return false;
+    seen.add(m.id);
+    return true;
+  });
+  return merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, limit);
+}
+
+export async function getInboxStats(userId: string): Promise<InboxStats> {
+  const [primary, secondary] = await Promise.all([
+    getValidGoogleToken(userId),
+    getValidSecondaryGoogleToken(userId),
+  ]);
+
+  const [primaryStats, secondaryStats] = await Promise.all([
+    fetchInboxStats(primary),
+    secondary ? fetchInboxStats(secondary) : Promise.resolve({ total: 0, unread: 0 }),
+  ]);
+
+  return {
+    total: primaryStats.total + secondaryStats.total,
+    unread: primaryStats.unread + secondaryStats.unread,
+  };
 }
 
 export async function getOldUnreadMessages(userId: string, daysOld = 30, limit = 25): Promise<GmailMessage[]> {
