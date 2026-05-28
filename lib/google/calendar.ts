@@ -1,4 +1,4 @@
-import { getValidGoogleToken } from "./tokens";
+import { getValidGoogleToken, getValidSecondaryGoogleToken } from "./tokens";
 
 export interface CalendarEvent {
   id: string;
@@ -50,17 +50,40 @@ async function fetchEvents(token: string, timeMin: string, timeMax: string, maxR
   }));
 }
 
+async function mergeEvents(events1: CalendarEvent[], events2: CalendarEvent[]): Promise<CalendarEvent[]> {
+  const seen = new Set<string>();
+  return [...events1, ...events2]
+    .filter((e) => { if (seen.has(e.id)) return false; seen.add(e.id); return true; })
+    .sort((a, b) => a.start.localeCompare(b.start));
+}
+
 export async function getTodayEvents(userId: string): Promise<CalendarEvent[]> {
-  const token = await getValidGoogleToken(userId);
+  const [primary, secondary] = await Promise.all([
+    getValidGoogleToken(userId),
+    getValidSecondaryGoogleToken(userId),
+  ]);
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
-  return fetchEvents(token, startOfDay, endOfDay);
+  const endOfDay   = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+
+  const [primaryEvents, secondaryEvents] = await Promise.all([
+    fetchEvents(primary, startOfDay, endOfDay),
+    secondary ? fetchEvents(secondary, startOfDay, endOfDay) : Promise.resolve([]),
+  ]);
+  return mergeEvents(primaryEvents, secondaryEvents);
 }
 
 export async function getUpcomingEvents(userId: string, days = 7): Promise<CalendarEvent[]> {
-  const token = await getValidGoogleToken(userId);
+  const [primary, secondary] = await Promise.all([
+    getValidGoogleToken(userId),
+    getValidSecondaryGoogleToken(userId),
+  ]);
   const now = new Date();
   const end = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-  return fetchEvents(token, now.toISOString(), end.toISOString(), 30);
+
+  const [primaryEvents, secondaryEvents] = await Promise.all([
+    fetchEvents(primary, now.toISOString(), end.toISOString(), 30),
+    secondary ? fetchEvents(secondary, now.toISOString(), end.toISOString(), 30) : Promise.resolve([]),
+  ]);
+  return mergeEvents(primaryEvents, secondaryEvents);
 }
