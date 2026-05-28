@@ -1,8 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { getInboxMessages, getInboxStats, getOldUnreadMessages, getOldUnreadCount, type GmailMessage } from "@/lib/google/gmail";
 import { Topbar } from "@/components/layout/Topbar";
 import { QuickReadPanel } from "@/components/mail/QuickReadPanel";
 import { InboxSummary } from "@/components/mail/InboxSummary";
+import { SecondaryAccountBar } from "@/components/mail/SecondaryAccountBar";
+import { buildSecondaryGoogleAuthUrl } from "@/lib/google/tokens";
 import { formatDistanceToNow } from "date-fns";
 import { Mail, AlertCircle } from "lucide-react";
 
@@ -78,10 +80,23 @@ function MessageRow({ message }: { message: GmailMessage }) {
   );
 }
 
-export default async function MailPage() {
+export default async function MailPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
+
+  const params = await searchParams;
+  const justConnected = params.secondary_connected === "1";
+
+  // Fetch secondary account email (if connected)
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("secondary_google_email")
+    .eq("user_id", user.id)
+    .single();
+  const secondaryEmail = profile?.secondary_google_email ?? null;
+  const connectUrl = buildSecondaryGoogleAuthUrl();
 
   const [messagesResult, statsResult, oldMessagesResult, oldCountResult] = await Promise.allSettled([
     getInboxMessages(user.id, 25),
@@ -128,6 +143,13 @@ export default async function MailPage() {
             )}
           </div>
         )}
+
+        {/* Secondary account connect / status */}
+        <SecondaryAccountBar
+          connectUrl={connectUrl}
+          secondaryEmail={secondaryEmail}
+          justConnected={justConnected}
+        />
 
         {/* AI Inbox Summary */}
         <InboxSummary unreadCount={stats?.unread ?? 0} />
