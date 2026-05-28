@@ -16,8 +16,9 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Logged in + on a public/auth route (but not the callback) → dashboard
-  if (user && isPublicRoute && pathname !== "/auth/callback") {
+  // Logged in + on a public/auth route (but not the OAuth callbacks) → dashboard
+  const isCallbackRoute = pathname === "/auth/callback" || pathname === "/auth/secondary-callback";
+  if (user && isPublicRoute && !isCallbackRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
