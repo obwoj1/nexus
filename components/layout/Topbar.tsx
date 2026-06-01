@@ -1,9 +1,10 @@
 "use client";
 
-import { Bell, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import { PushNotifications } from "@/components/layout/PushNotifications";
 
 interface TopbarProps {
   section?: string;
@@ -56,11 +57,8 @@ export function Topbar({ section = "NEXUS", title }: TopbarProps) {
           <Search className="w-4 h-4" style={{ color: "rgba(245,240,232,0.4)" }} />
         </button>
 
-        {/* Bell */}
-        <button className="w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center transition-colors duration-200 hover:bg-[rgba(255,235,180,0.05)]"
-          style={{ border: "1px solid rgba(255,235,180,0.08)" }}>
-          <Bell className="w-4 h-4" style={{ color: "rgba(245,240,232,0.4)" }} />
-        </button>
+        {/* Bell — push notifications toggle */}
+        <PushNotifications />
 
         {/* Avatar */}
         <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center text-xs md:text-sm font-semibold cursor-pointer"

@@ -16,6 +16,16 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Nexus",
   description: "Your entire digital life. One command center.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Nexus",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+    "theme-color": "#0A0A0A",
+  },
 };
 
 export default function RootLayout({
