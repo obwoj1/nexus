@@ -17,7 +17,7 @@ export default async function proxy(request: NextRequest) {
   }
 
   // Logged in + on a public/auth route (but not the OAuth callbacks) → dashboard
-  const isCallbackRoute = pathname === "/auth/callback" || pathname === "/auth/secondary-callback";
+  const isCallbackRoute = pathname === "/auth/callback" || pathname === "/auth/secondary-callback" || pathname === "/auth/outlook-callback";
   if (user && isPublicRoute && !isCallbackRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
