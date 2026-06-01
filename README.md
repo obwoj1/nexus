@@ -24,6 +24,8 @@ Next.js 15 · TypeScript · Tailwind v4 · shadcn/ui · Supabase · Vercel · An
 | 5b | Wardrobe — Gemini Vision categorize, Ask Claudia stylist, Saved Fits | ✅ Live |
 | 6 | Investments — Holdings, Live prices (Finnhub + CoinGecko), CSV import, Gmail trade sync | ✅ Live |
 | 7 | Global Claudia AI — floating chat (every page), dashboard briefing card, full app context | ✅ Live |
+| 8 | PWA — installable on phone, standalone mode, persistent login, home screen icon | ✅ Live |
+| 8 | Web push notifications — bell toggle in topbar, 8AM EST daily Claudia briefing via cron | ✅ Live |
 
 ## Setup
 
@@ -45,6 +47,10 @@ FINNHUB_API_KEY=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 ALLOWED_EMAIL=
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_EMAIL=
+CRON_SECRET=
 ```
 
 ## Deploy

@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Added — PWA + Push Notifications + internship data (2026-05-31, Session 18)
+- feat(pwa): manifest.json + standalone display + dark theme + gold N icons (192/512px) — app installs properly on phone, no browser bar, persistent login
+- feat(pwa): service worker (sw.js) — handles push events, shows notifications, taps open the app at correct URL
+- feat(push): push_subscriptions DB table with RLS — stores per-device push endpoints
+- feat(push): /api/push/subscribe — saves/removes push subscription for logged-in user
+- feat(push): /api/push/send — internal utility to send push to any user ID
+- feat(push): /api/push/cron — Vercel cron at 8AM EST, generates personalized Claudia briefing via claude-haiku, sends as push notification
+- feat(push): PushNotifications bell component in topbar — tap to enable/disable, gold when active
+- chore(cron): vercel.json — declares daily cron at 12:00 UTC (8AM EDT)
+- feat(tracking): seeded internship data directly into Oba's account — 7 habits, 7 goals, 7 important dates, 4 pinned notes (CBRE, JH, People I Met, Weekly Wins Log)
+- fix(ai): Claudia system prompt toned down — calm/direct, explicit EST timezone
+
 ### Fixed — CSV import, sleep input, notes dedup (2026-05-27, Session 17)
 - fix(investments): rewrite Robinhood CSV parser — handles transaction log format (Buy/Sell aggregation into net positions), full RFC4180 quoted-field parser for multi-line Description (CUSIP on line 2), weighted average cost basis
 - feat(tracking): sleep input replaced with Slept At / Woke At time pickers — hours auto-calculated, midnight crossover handled
