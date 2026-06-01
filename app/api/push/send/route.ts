@@ -2,20 +2,9 @@ export const runtime = "nodejs";
 
 import { createAdminClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
-import webpush from "web-push";
+import { sendWebPush, type PushPayload } from "@/lib/webpush";
 
-webpush.setVapidDetails(
-  `mailto:${process.env.VAPID_EMAIL}`,
-  process.env.VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-);
-
-export interface PushPayload {
-  title: string;
-  body: string;
-  url?: string;
-  tag?: string;
-}
+export type { PushPayload };
 
 export async function sendPushToUser(userId: string, payload: PushPayload) {
   const admin = createAdminClient();
@@ -31,15 +20,10 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
 
   await Promise.all(subs.map(async (sub) => {
     try {
-      await webpush.sendNotification(
-        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-        JSON.stringify(payload),
-      );
-      sent++;
-    } catch (err: unknown) {
-      const statusCode = (err as { statusCode?: number }).statusCode;
-      if (statusCode === 410 || statusCode === 404) stale.push(sub.endpoint);
-    }
+      const status = await sendWebPush(sub, payload);
+      if (status === 201 || status === 200) sent++;
+      else if (status === 410 || status === 404) stale.push(sub.endpoint);
+    } catch { /* network error — skip */ }
   }));
 
   if (stale.length) {
@@ -48,7 +32,6 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
   return { sent };
 }
 
-// Manual send endpoint (internal use)
 export async function POST(req: NextRequest) {
   const secret = req.headers.get("x-internal-secret");
   if (secret !== process.env.CRON_SECRET) {
