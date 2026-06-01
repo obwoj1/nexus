@@ -1,0 +1,5 @@
+<svg width='192' height='192' viewBox='0 0 192 192' xmlns='http://www.w3.org/2000/svg'>
+  <rect width='192' height='192' fill='%230A0A0A'/>
+  <circle cx='96' cy='96' r='80' fill='rgba(200,144,10,0.15)'/>
+  <text x='96' y='116' font-family='system-ui,sans-serif' font-size='96' font-weight='bold' fill='%23C8900A' text-anchor='middle'>N</text>
+</svg>
