@@ -106,7 +106,7 @@ export function Sidebar() {
       </aside>
 
       {/* ── Mobile bottom tab bar (hidden on desktop) ── */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center overflow-x-auto no-scrollbar px-1 py-1 gap-0.5"
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center overflow-x-auto no-scrollbar px-1 py-1 gap-0.5"
         style={{ background: "#0D0B08", borderTop: "1px solid rgba(255,235,180,0.07)" }}>
         {navItems.filter((i) => i.live).map(({ icon: Icon, label, href }) => {
           const active = pathname === href;

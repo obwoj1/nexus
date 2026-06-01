@@ -24,7 +24,7 @@ export function Topbar({ section = "NEXUS", title }: TopbarProps) {
     : user?.email?.slice(0, 2).toUpperCase() ?? "??";
 
   return (
-    <header className="h-[56px] md:h-[64px] flex items-center justify-between px-4 md:px-8 shrink-0"
+    <header className="h-[56px] md:h-[64px] flex items-center justify-between px-4 md:px-8 shrink-0 relative z-30"
       style={{ borderBottom: "1px solid rgba(255,235,180,0.07)" }}>
 
       {/* Left — section + title */}

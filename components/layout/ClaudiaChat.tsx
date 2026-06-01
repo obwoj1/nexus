@@ -90,7 +90,7 @@ export function ClaudiaChat() {
             exit={{ scale: 0, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 24 }}
             onClick={() => setOpen(true)}
-            className="fixed bottom-20 right-5 md:bottom-8 md:right-8 z-50 w-13 h-13 rounded-full flex items-center justify-center shadow-lg"
+            className="fixed bottom-20 right-5 md:bottom-8 md:right-8 z-[60] w-13 h-13 rounded-full flex items-center justify-center shadow-lg"
             style={{
               width: 52, height: 52,
               background: "linear-gradient(135deg, #C8900A, #F5CE58)",
@@ -112,10 +112,10 @@ export function ClaudiaChat() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.97 }}
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
-            className="fixed bottom-20 right-4 md:bottom-8 md:right-8 z-50 flex flex-col"
+            className="fixed bottom-20 right-4 md:bottom-8 md:right-8 z-[60] flex flex-col"
             style={{
               width: "min(420px, calc(100vw - 32px))",
-              height: "min(560px, calc(100dvh - 120px))",
+              height: "min(520px, calc(100dvh - 160px))",
               background: "rgba(10,8,6,0.96)",
               backdropFilter: "blur(24px)",
               border: "1px solid rgba(200,144,10,0.25)",

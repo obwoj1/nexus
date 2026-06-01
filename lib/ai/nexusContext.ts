@@ -1,8 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { getValidGoogleToken } from "@/lib/google/tokens";
 
-function daysAgo(n: number) {
-  const d = new Date();
+function daysAgo(n: number, tz = "America/New_York") {
+  const d = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
   d.setDate(d.getDate() - n);
   return d.toISOString().split("T")[0];
 }
@@ -25,11 +25,11 @@ export async function buildNexusContext(userId: string, today: string, tz: strin
     holdings, sessions, notes,
   ] = await Promise.all([
     admin.from("habits").select("*").eq("user_id", userId),
-    admin.from("habit_logs").select("habit_id, date").eq("user_id", userId).gte("date", daysAgo(60)),
+    admin.from("habit_logs").select("habit_id, date").eq("user_id", userId).gte("date", daysAgo(60, tz)),
     admin.from("subscriptions").select("*").eq("user_id", userId),
     admin.from("goals").select("*").eq("user_id", userId),
     admin.from("reading_list").select("*").eq("user_id", userId),
-    admin.from("health_metrics").select("*").eq("user_id", userId).gte("date", daysAgo(14)).order("date", { ascending: false }),
+    admin.from("health_metrics").select("*").eq("user_id", userId).gte("date", daysAgo(14, tz)).order("date", { ascending: false }),
     admin.from("important_dates").select("*").eq("user_id", userId),
     admin.from("holdings").select("ticker, name, asset_type, quantity, cost_basis").eq("user_id", userId),
     admin.from("workout_sessions").select("id, name, started_at, duration_minutes").eq("user_id", userId).order("started_at", { ascending: false }).limit(10),
@@ -40,7 +40,7 @@ export async function buildNexusContext(userId: string, today: string, tz: strin
   const logs = habitLogs.data ?? [];
   const habitLines = (habits.data ?? []).map((h) => {
     const hLogs = logs.filter((l) => l.habit_id === h.id);
-    const last30 = hLogs.filter((l) => l.date >= daysAgo(30));
+    const last30 = hLogs.filter((l) => l.date >= daysAgo(30, tz));
     const rate = Math.round((last30.length / 30) * 100);
     const streak = calcStreak(new Set(hLogs.map((l) => l.date)), today);
     return `  - ${h.name}: ${rate}% (30d), streak ${streak}d`;
@@ -134,7 +134,8 @@ export async function buildNexusContext(userId: string, today: string, tz: strin
   } catch { /* no Google token — skip */ }
 
   return `
-TODAY: ${today} | TIMEZONE: ${tz}
+TODAY: ${today} | TIMEZONE: ${tz} (Eastern Time — ALL dates and times must be interpreted and reported in EST/EDT, never UTC)
+IMPORTANT: Never use UTC when talking to the user. Always convert to Eastern Time.
 
 HABITS:
 ${habitLines}
