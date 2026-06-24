@@ -55,13 +55,16 @@ export async function buildNexusContext(userId: string, today: string, tz: strin
   const subLines = subs.map((s) => `  - ${s.name} $${s.amount}/${s.billing_cycle}`).join("\n") || "  None";
 
   // ── Goals ────────────────────────────────────────────────────────────────
-  const goalLines = (goals.data ?? []).map((g) => {
+  const allGoals = goals.data ?? [];
+  const activeGoals = allGoals.filter((g) => g.status !== "completed");
+  const completedCount = allGoals.length - activeGoals.length;
+  const goalLines = activeGoals.map((g) => {
     const dLeft = g.target_date
       ? Math.ceil((new Date(g.target_date).getTime() - new Date(today).getTime()) / 86400000)
       : null;
     const dl = dLeft === null ? "" : dLeft >= 0 ? `, ${dLeft}d left` : `, OVERDUE ${Math.abs(dLeft)}d`;
-    return `  - "${g.title}" ${g.progress}% [${g.status}]${dl}`;
-  }).join("\n") || "  None";
+    return `  - "${g.title}" ${g.progress}% [active]${dl}`;
+  }).join("\n") || "  None (all goals completed or none set)";
 
   // ── Health ───────────────────────────────────────────────────────────────
   const hRows = health.data ?? [];
@@ -143,7 +146,7 @@ ${habitLines}
 SUBSCRIPTIONS ($${monthlyBurn.toFixed(0)}/mo burn):
 ${subLines}
 
-GOALS:
+GOALS (active only — ${completedCount} completed and excluded):
 ${goalLines}
 
 HEALTH (14-day avg — sleep: ${avgSleep}h, mood: ${avgMood}/5):

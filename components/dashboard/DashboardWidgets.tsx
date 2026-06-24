@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Calendar, Mail, Dumbbell, Shirt, FileText, Activity, Clock, AlertCircle, Sparkles } from "lucide-react";
+import { Calendar, Mail, Dumbbell, Shirt, FileText, Activity, Clock, AlertCircle, Sparkles, RefreshCw } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -217,25 +217,29 @@ function BriefingCard() {
   const [text, setText] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Use today's date as cache key so it refreshes daily
+  async function fetchBriefing(forceRefresh = false) {
+    setLoading(true);
     const today = new Date().toLocaleDateString("en-CA");
-    const cached = sessionStorage.getItem(BRIEFING_KEY);
-    if (cached) {
-      try {
-        const { date, content } = JSON.parse(cached) as { date: string; content: string };
-        if (date === today) { setText(content); setLoading(false); return; }
-      } catch { /* invalid cache */ }
-    }
-    void (async () => {
-      const res = await askClaudiaAction([], "briefing");
-      if (res.result) {
-        setText(res.result);
-        sessionStorage.setItem(BRIEFING_KEY, JSON.stringify({ date: today, content: res.result }));
+    if (!forceRefresh) {
+      const cached = sessionStorage.getItem(BRIEFING_KEY);
+      if (cached) {
+        try {
+          const { date, content } = JSON.parse(cached) as { date: string; content: string };
+          if (date === today) { setText(content); setLoading(false); return; }
+        } catch { /* invalid cache */ }
       }
-      setLoading(false);
-    })();
-  }, []);
+    } else {
+      sessionStorage.removeItem(BRIEFING_KEY);
+    }
+    const res = await askClaudiaAction([], "briefing");
+    if (res.result) {
+      setText(res.result);
+      sessionStorage.setItem(BRIEFING_KEY, JSON.stringify({ date: new Date().toLocaleDateString("en-CA"), content: res.result }));
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => { void fetchBriefing(); }, []);
 
   return (
     <motion.div variants={card} initial="hidden" animate="visible" custom={0}
@@ -250,9 +254,18 @@ function BriefingCard() {
           style={{ background: "linear-gradient(135deg, #C8900A, #F5CE58)" }}>
           <Sparkles className="w-3 h-3 text-black" />
         </div>
-        <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: "rgba(200,144,10,0.8)" }}>
+        <p className="text-[10px] font-semibold tracking-widest uppercase flex-1" style={{ color: "rgba(200,144,10,0.8)" }}>
           Claudia&apos;s Briefing
         </p>
+        {!loading && (
+          <button
+            onClick={() => void fetchBriefing(true)}
+            title="Refresh briefing"
+            className="w-5 h-5 flex items-center justify-center rounded transition-colors hover:bg-white/5"
+          >
+            <RefreshCw className="w-3 h-3" style={{ color: "rgba(200,144,10,0.5)" }} />
+          </button>
+        )}
       </div>
       {loading ? (
         <div className="flex gap-1.5 items-center py-1">
