@@ -100,6 +100,12 @@ proxy.ts                         # Middleware (renamed from middleware.ts for Ne
 
 ## Current Status
 
+> **Checked 2026-08-04.** This section is still accurate — **no Nexus work has happened since
+> 2026-06-30**. (The Claude Code transcripts from the build were lost to the 30-day session
+> auto-cleanup; retention has since been raised to 365 days. This file and `DEVLOG.md` /
+> `CHANGELOG.md` are the record — keep writing to them.) Phases 1–7 are all live; the pending
+> table below is the true resume point.
+
 Everything above is live and working. Active bugs/pending:
 
 | Item | Status |
