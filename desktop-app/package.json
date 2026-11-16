@@ -1,0 +1,14 @@
+{
+  "name": "nexus-desktop",
+  "productName": "Nexus",
+  "version": "0.1.0",
+  "description": "Nexus desktop client",
+  "author": "Nexus",
+  "main": "electron/main.cjs",
+  "dependencies": {
+    "electron-log": "^5.4.3"
+  },
+  "devDependencies": {
+    "electron": "45.3.2"
+  }
+}

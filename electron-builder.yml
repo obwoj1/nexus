@@ -1,0 +1,13 @@
+appId: com.obwoj1.nexus
+productName: Nexus
+asar: true
+directories:
+  app: desktop-app
+  output: release
+files:
+  - electron/**/*
+mac:
+  category: public.app-category.productivity
+  target:
+    - dmg
+    - zip

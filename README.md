@@ -4,7 +4,7 @@ Personal command center. Single-user. Private.
 
 ## Stack
 
-Next.js 15 · TypeScript · Tailwind v4 · shadcn/ui · Supabase · Vercel · Anthropic (Claude)
+Next.js 16 · TypeScript · Tailwind v4 · shadcn/ui · Supabase · Vercel · Anthropic (Claude) · Electron desktop shell
 
 ## Live Features
 
@@ -56,3 +56,20 @@ CRON_SECRET=
 ## Deploy
 
 Auto-deploys to Vercel on push to `main`.
+
+## Desktop app (early shell)
+
+The Electron client opens the hosted Nexus application, so authentication, server actions, and data continue to use the existing Vercel and Supabase services. The desktop package contains no service-role keys. Google OAuth remains in the app's persistent session; Google consent warnings are controlled by the OAuth consent-screen configuration and any required Google verification.
+
+```bash
+npm install
+npm run desktop:dev
+```
+
+To point the desktop window at a local Nexus server, start `npm run dev` in one terminal and run:
+
+```bash
+NEXUS_DESKTOP_URL=http://localhost:3000 npm run desktop:dev
+```
+
+Build unsigned macOS installer artifacts with `npm run desktop:dist:mac`. Signing, notarization, and Mac App Store distribution require Apple developer credentials and are a later release step. The shell package is isolated from the web app dependencies. See [ADR-001](docs/architecture/ADR-001-electron-shell.md) for the integration boundary and follow-up plan.
