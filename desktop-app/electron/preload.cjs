@@ -2,7 +2,6 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("nexusDesktop", {
   openOAuthUrl: (url) => ipcRenderer.invoke("desktop:open-oauth", url),
-  openObavenusDraft: (prompt) => ipcRenderer.invoke("desktop:obavenus:draft", prompt),
   shareCoursewellContext: (summary) => ipcRenderer.invoke("desktop:coursewell-context:share", summary),
   getCoursewellContext: () => ipcRenderer.invoke("desktop:coursewell-context:get"),
   onCoursewellContext: (callback) => {
