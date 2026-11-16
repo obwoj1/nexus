@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Calendar, Mail, Dumbbell, Shirt, FileText, Activity, Clock, AlertCircle, Sparkles, RefreshCw } from "lucide-react";
+import { Calendar, Mail, Dumbbell, Shirt, FileText, Activity, Clock, AlertCircle, Sparkles, RefreshCw, BookOpen, Bot } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -334,6 +334,32 @@ export function DashboardWidgets({ name, todayEvents, inboxStats }: Props) {
           </Link>
         </motion.div>
       ))}
+
+      <section className="col-span-2 md:col-span-3 mt-3" aria-label="Connected apps">
+        <p className="text-[10px] tracking-[0.2em] uppercase mb-3" style={{ color: "rgba(245,240,232,0.38)" }}>
+          Your connected apps
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <a href="https://coursewell.vercel.app" target="_blank" rel="noreferrer"
+            className="rounded-2xl p-4 md:p-5 flex items-center gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgba(200,144,10,0.25)]"
+            style={surface}>
+            <IconBox><BookOpen className="w-4 h-4" style={{ color: "#C8900A" }} /></IconBox>
+            <div>
+              <p className="text-sm font-medium" style={{ color: "rgba(245,240,232,0.85)" }}>Coursewell</p>
+              <p className="text-xs mt-1" style={{ color: "rgba(245,240,232,0.38)" }}>Courses, assignments & study tools</p>
+            </div>
+          </a>
+          <a href="obavenus://open" target="_blank" rel="noreferrer"
+            className="rounded-2xl p-4 md:p-5 flex items-center gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgba(200,144,10,0.25)]"
+            style={surface}>
+            <IconBox><Bot className="w-4 h-4" style={{ color: "#C8900A" }} /></IconBox>
+            <div>
+              <p className="text-sm font-medium" style={{ color: "rgba(245,240,232,0.85)" }}>Obavenus</p>
+              <p className="text-xs mt-1" style={{ color: "rgba(245,240,232,0.38)" }}>Local AI assistant & agent workspace</p>
+            </div>
+          </a>
+        </div>
+      </section>
     </div>
   );
 }
