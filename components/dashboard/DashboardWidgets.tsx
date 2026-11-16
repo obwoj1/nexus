@@ -289,6 +289,40 @@ interface Props {
   inboxStats: InboxStats | null;
 }
 
+interface CoursewellContext {
+  sharedAt: string;
+  assignments: { title: string; course: string; dueAt: string }[];
+}
+
+function CoursewellContextCard() {
+  const [context, setContext] = useState<CoursewellContext | null>(null);
+  useEffect(() => {
+    const desktop = (window as Window & { nexusDesktop?: { getCoursewellContext?: () => Promise<CoursewellContext | null>; onCoursewellContext?: (callback: (value: CoursewellContext) => void) => () => void } }).nexusDesktop;
+    if (!desktop) return;
+    desktop.getCoursewellContext?.().then((value) => { if (value) setContext(value); }).catch(() => {});
+    return desktop.onCoursewellContext?.((value) => setContext(value));
+  }, []);
+  if (!context) return null;
+  return (
+    <section className="col-span-2 md:col-span-3 rounded-2xl p-4 md:p-5" style={surface} aria-label="Coursewell study context">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] tracking-widest uppercase" style={{ color: "rgba(245,240,232,0.4)" }}>Shared from Coursewell</p>
+          <h2 className="text-base font-medium mt-1" style={{ color: "rgba(245,240,232,0.88)" }}>Coming up in your courses</h2>
+        </div>
+        <a href="https://coursewell.vercel.app" className="text-xs" style={{ color: "#C8900A" }}>Open Coursewell ↗</a>
+      </div>
+      {context.assignments.length ? <ul className="mt-4 divide-y divide-white/5">
+        {context.assignments.map((item, index) => <li key={`${item.dueAt}-${index}`} className="py-2 flex items-center justify-between gap-4 text-sm">
+          <span style={{ color: "rgba(245,240,232,0.8)" }}>{item.title}<span className="ml-2 text-xs" style={{ color: "rgba(245,240,232,0.4)" }}>{item.course}</span></span>
+          <time className="text-xs shrink-0" style={{ color: "rgba(245,240,232,0.5)" }} dateTime={item.dueAt}>{new Date(item.dueAt).toLocaleString()}</time>
+        </li>)}
+      </ul> : <p className="text-sm mt-3" style={{ color: "rgba(245,240,232,0.55)" }}>No incomplete assignments are due in the next seven days.</p>}
+      <p className="text-[10px] mt-3" style={{ color: "rgba(245,240,232,0.35)" }}>Kept in memory on this Mac for this desktop session only. Shared {new Date(context.sharedAt).toLocaleString()}.</p>
+    </section>
+  );
+}
+
 export function DashboardWidgets({ name, todayEvents, inboxStats }: Props) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 max-w-5xl">
@@ -317,6 +351,7 @@ export function DashboardWidgets({ name, todayEvents, inboxStats }: Props) {
       </motion.div>
 
       {/* AI Priority Inbox — full width */}
+      <CoursewellContextCard />
       <div className="col-span-2 md:col-span-3">
         <PriorityCard />
       </div>

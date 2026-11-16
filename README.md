@@ -63,6 +63,8 @@ The Electron client opens the hosted Nexus application, so authentication, serve
 
 Desktop Google sign-in opens the system browser and returns through `com.obwoj1.nexus://auth/callback`. Add that exact URI to **Nexus Supabase → Authentication → URL Configuration → Redirect URLs**. For Coursewell desktop sign-in, add `com.obwoj1.nexus://auth/coursewell` to **Coursewell Supabase → Authentication → URL Configuration → Redirect URLs**. Keep the Google Cloud OAuth callback pointed at the Supabase `/auth/v1/callback` endpoint. Google may still show an unverified-app consent warning until its OAuth app verification is complete.
 
+In the Nexus desktop app, Coursewell's Today page has an explicit **Share next 7 days with Nexus** action. It sends at most 20 incomplete upcoming assignment titles, course labels, and due times over a validated local Electron IPC bridge. Nexus keeps the summary in process memory until the app exits; it is not uploaded or saved. Assignment descriptions, files, and Canvas credentials are excluded. Obavenus currently opens through its registered app link; richer context handoff is a separate follow-up.
+
 ```bash
 npm install
 npm run desktop:dev
