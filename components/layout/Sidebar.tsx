@@ -15,6 +15,7 @@ import {
   TrendingUp,
   GraduationCap,
   Network,
+  Clock4,
   LogOut,
 } from "lucide-react";
 
@@ -23,6 +24,7 @@ const navItems = [
   { icon: Calendar,        label: "Calendar",  href: "/calendar",  live: true },
   { icon: GraduationCap,   label: "Study",     href: "/study",     live: true },
   { icon: Network,         label: "Agents",    href: "/agents",    live: true },
+  { icon: Clock4,          label: "Schedule",  href: "/schedule",  live: true },
   { icon: Mail,            label: "Mail",      href: "/mail",      live: true },
   { icon: FileText,        label: "Notes",     href: "/notes",     live: true },
   { icon: Activity,        label: "Tracking",  href: "/tracking",  live: true },
