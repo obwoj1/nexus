@@ -3,6 +3,7 @@ const log = require("electron-log/main");
 const path = require("node:path");
 const { getOAuthRedirectForOrigin, isAllowedGoogleOAuthUrl, parseOAuthCallback } = require("./oauth.cjs");
 const { sanitizeCoursewellContext } = require("./coursewell-context.cjs");
+const { createObavenusDraftUrl } = require("./obavenus-link.cjs");
 
 const NEXUS_URL = process.env.NEXUS_DESKTOP_URL || "https://nexus-kappa-henna.vercel.app";
 const APP_ORIGIN = new URL(NEXUS_URL).origin;
@@ -205,6 +206,11 @@ if (!hasLock) {
     ipcMain.handle("desktop:coursewell-context:get", (event) => {
       if (!hasOrigin(event.senderFrame?.url, APP_ORIGIN)) throw new Error("Study context is only available to Nexus.");
       return coursewellContext || null;
+    });
+    ipcMain.handle("desktop:obavenus:draft", async (event, prompt) => {
+      if (!hasOrigin(event.senderFrame?.url, APP_ORIGIN)) throw new Error("Obavenus handoff can only be started from Nexus.");
+      await shell.openExternal(createObavenusDraftUrl(prompt));
+      return true;
     });
     Menu.setApplicationMenu(Menu.buildFromTemplate([
       {

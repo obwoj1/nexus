@@ -296,6 +296,7 @@ interface CoursewellContext {
 
 function CoursewellContextCard() {
   const [context, setContext] = useState<CoursewellContext | null>(null);
+  const [handoffState, setHandoffState] = useState("");
   useEffect(() => {
     const desktop = (window as Window & { nexusDesktop?: { getCoursewellContext?: () => Promise<CoursewellContext | null>; onCoursewellContext?: (callback: (value: CoursewellContext) => void) => () => void } }).nexusDesktop;
     if (!desktop) return;
@@ -303,6 +304,14 @@ function CoursewellContextCard() {
     return desktop.onCoursewellContext?.((value) => setContext(value));
   }, []);
   if (!context) return null;
+  const openObavenus = async () => {
+    const desktop = (window as Window & { nexusDesktop?: { openObavenusDraft?: (prompt: string) => Promise<boolean> } }).nexusDesktop;
+    if (!desktop?.openObavenusDraft) { setHandoffState("Available in the Nexus desktop app."); return; }
+    const lines = context.assignments.map((item) => `- ${item.title} (${item.course}), due ${new Date(item.dueAt).toLocaleString()}`);
+    const prompt = `Help me plan and study for these upcoming course assignments. Give me a realistic prioritized plan and ask what I want to work on first. Do not complete or submit assignments for me.\n\n${lines.join("\n")}`.slice(0, 2000);
+    try { await desktop.openObavenusDraft(prompt); setHandoffState("Draft opened in Obavenus. Review it before sending."); }
+    catch { setHandoffState("Could not open Obavenus. Check that it is installed and updated."); }
+  };
   return (
     <section className="col-span-2 md:col-span-3 rounded-2xl p-4 md:p-5" style={surface} aria-label="Coursewell study context">
       <div className="flex items-start justify-between gap-4">
@@ -310,7 +319,7 @@ function CoursewellContextCard() {
           <p className="text-[10px] tracking-widest uppercase" style={{ color: "rgba(245,240,232,0.4)" }}>Shared from Coursewell</p>
           <h2 className="text-base font-medium mt-1" style={{ color: "rgba(245,240,232,0.88)" }}>Coming up in your courses</h2>
         </div>
-        <a href="https://coursewell.vercel.app" className="text-xs" style={{ color: "#C8900A" }}>Open Coursewell ↗</a>
+        <div className="flex items-center gap-4"><button type="button" onClick={openObavenus} className="text-xs" style={{ color: "#C8900A" }}>Continue in Obavenus ↗</button><a href="https://coursewell.vercel.app" className="text-xs" style={{ color: "#C8900A" }}>Open Coursewell ↗</a></div>
       </div>
       {context.assignments.length ? <ul className="mt-4 divide-y divide-white/5">
         {context.assignments.map((item, index) => <li key={`${item.dueAt}-${index}`} className="py-2 flex items-center justify-between gap-4 text-sm">
@@ -318,6 +327,7 @@ function CoursewellContextCard() {
           <time className="text-xs shrink-0" style={{ color: "rgba(245,240,232,0.5)" }} dateTime={item.dueAt}>{new Date(item.dueAt).toLocaleString()}</time>
         </li>)}
       </ul> : <p className="text-sm mt-3" style={{ color: "rgba(245,240,232,0.55)" }}>No incomplete assignments are due in the next seven days.</p>}
+      {handoffState && <p role="status" className="text-xs mt-3" style={{ color: "rgba(245,240,232,0.55)" }}>{handoffState}</p>}
       <p className="text-[10px] mt-3" style={{ color: "rgba(245,240,232,0.35)" }}>Kept in memory on this Mac for this desktop session only. Shared {new Date(context.sharedAt).toLocaleString()}.</p>
     </section>
   );
