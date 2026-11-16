@@ -59,7 +59,9 @@ Auto-deploys to Vercel on push to `main`.
 
 ## Desktop app (early shell)
 
-The Electron client opens the hosted Nexus application, so authentication, server actions, and data continue to use the existing Vercel and Supabase services. The desktop package contains no service-role keys. Google OAuth remains in the app's persistent session; Google consent warnings are controlled by the OAuth consent-screen configuration and any required Google verification.
+The Electron client opens the hosted Nexus application, so authentication, server actions, and data continue to use the existing Vercel and Supabase services. The desktop package contains no service-role keys. Google OAuth starts with PKCE inside the product window, opens the system browser for consent, and returns the short-lived code to the originating app window. Google consent warnings are controlled by the OAuth consent-screen configuration and any required Google verification.
+
+Desktop Google sign-in opens the system browser and returns through `com.obwoj1.nexus://auth/callback`. Add that exact URI to **Nexus Supabase → Authentication → URL Configuration → Redirect URLs**. For Coursewell desktop sign-in, add `com.obwoj1.nexus://auth/coursewell` to **Coursewell Supabase → Authentication → URL Configuration → Redirect URLs**. Keep the Google Cloud OAuth callback pointed at the Supabase `/auth/v1/callback` endpoint. Google may still show an unverified-app consent warning until its OAuth app verification is complete.
 
 ```bash
 npm install

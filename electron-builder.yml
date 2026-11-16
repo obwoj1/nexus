@@ -8,6 +8,11 @@ files:
   - electron/**/*
 mac:
   category: public.app-category.productivity
+  icon: assets/Nexus.icns
+  protocols:
+    - name: Nexus
+      schemes:
+        - com.obwoj1.nexus
   target:
     - dmg
     - zip

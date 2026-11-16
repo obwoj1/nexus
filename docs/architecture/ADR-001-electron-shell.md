@@ -9,7 +9,7 @@ Nexus is a Next.js App Router application deployed on Vercel and backed by Supab
 
 ## Decision
 
-Ship Nexus initially as a hardened Electron client for the existing HTTPS Nexus deployment. Keep the Next.js server and Supabase data plane hosted. Open Nexus sign-in and the approved Google/Supabase OAuth redirects inside the app's persistent Electron session so the existing callback and cookie flow remains intact. Send unrelated web links to the system browser.
+Ship Nexus initially as a hardened Electron client for the existing HTTPS Nexus deployment. Keep the Next.js server and Supabase data plane hosted. Start Supabase PKCE in the Electron renderer, open the returned Google authorization URL in the operating system's browser, and return the one-time auth code to the renderer through the registered `com.obwoj1.nexus` app protocol. This keeps the verifier in the originating app session and avoids presenting Google OAuth inside an embedded user-agent. Send unrelated web links to the system browser.
 
 Register Coursewell and Obavenus as separate app destinations in the Nexus shell. Integrate their data through explicit APIs or deep links in later slices; do not scrape their UIs, share service keys, or merge their databases. Obavenus remains an independently installed Electron app.
 

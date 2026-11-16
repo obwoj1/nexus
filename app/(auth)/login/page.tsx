@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
@@ -13,27 +14,63 @@ export default function LoginPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!window.nexusDesktop) return;
+    return window.nexusDesktop.onOAuthCallback(async (rawUrl) => {
+      try {
+        const callback = new URL(rawUrl);
+        if (callback.protocol !== "com.obwoj1.nexus:" || callback.hostname !== "auth" || callback.pathname !== "/callback") return;
+        const providerError = callback.searchParams.get("error_description") || callback.searchParams.get("error");
+        if (providerError) throw new Error(providerError);
+        const code = callback.searchParams.get("code");
+        if (!code) throw new Error("Google did not return a sign-in code. Please try again.");
+        setStatus("loading");
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) throw error;
+        router.replace("/dashboard");
+        router.refresh();
+      } catch (error) {
+        setStatus("error");
+        setErrorMsg(error instanceof Error ? error.message : "Google sign-in could not be completed.");
+      }
+    });
+  }, [router, supabase]);
 
   async function handleGoogleLogin() {
     setStatus("loading");
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        scopes: [
-          "openid",
-          "email",
-          "profile",
-          "https://www.googleapis.com/auth/calendar",
-          "https://www.googleapis.com/auth/gmail.modify",
-        ].join(" "),
-        queryParams: { access_type: "offline", prompt: "consent" },
-      },
-    });
-    if (error) {
+    setErrorMsg("");
+    const options = {
+      scopes: [
+        "openid",
+        "email",
+        "profile",
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/gmail.modify",
+      ].join(" "),
+      queryParams: { access_type: "offline", prompt: "consent" },
+    };
+    try {
+      if (window.nexusDesktop) {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { ...options, redirectTo: "com.obwoj1.nexus://auth/callback", skipBrowserRedirect: true },
+        });
+        if (error) throw error;
+        if (!data.url) throw new Error("Supabase did not return a Google sign-in link.");
+        await window.nexusDesktop.openOAuthUrl(data.url);
+        return;
+      }
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { ...options, redirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (error) throw error;
+    } catch (error) {
       setStatus("error");
-      setErrorMsg("Could not connect to Google. Try again.");
+      setErrorMsg(error instanceof Error ? error.message : "Could not connect to Google. Try again.");
     }
   }
 
