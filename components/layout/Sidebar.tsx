@@ -14,6 +14,7 @@ import {
   Shirt,
   TrendingUp,
   GraduationCap,
+  Network,
   LogOut,
 } from "lucide-react";
 
@@ -21,6 +22,7 @@ const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", live: true },
   { icon: Calendar,        label: "Calendar",  href: "/calendar",  live: true },
   { icon: GraduationCap,   label: "Study",     href: "/study",     live: true },
+  { icon: Network,         label: "Agents",    href: "/agents",    live: true },
   { icon: Mail,            label: "Mail",      href: "/mail",      live: true },
   { icon: FileText,        label: "Notes",     href: "/notes",     live: true },
   { icon: Activity,        label: "Tracking",  href: "/tracking",  live: true },
