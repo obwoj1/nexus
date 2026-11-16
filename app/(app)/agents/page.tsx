@@ -20,7 +20,7 @@ export default async function AgentsPage() {
         <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ background: "rgba(200,144,10,.12)", color: "#E8B428" }}><Network className="w-5 h-5" /></div>
         <div><p className="text-[10px] tracking-[.22em] uppercase" style={{ color: "rgba(245,240,232,.4)" }}>NEXUS ASSISTANT</p><h1 className="text-2xl font-semibold mt-1">Specialists, working together</h1><p className="text-sm mt-1" style={{ color: "rgba(245,240,232,.5)" }}>Run a bounded reasoning team for a task, then review the synthesis and each perspective.</p></div>
       </div>
-      <AgentStudio agents={agentsResult.data ?? []} workflows={workflowsResult.data ?? []} projects={projectsResult.data ?? []} loadError={Boolean(agentsResult.error || workflowsResult.error)} />
+      <AgentStudio agents={agentsResult.data ?? []} workflows={workflowsResult.data ?? []} projects={projectsResult.data ?? []} availableProviders={["claude", ...(process.env.GEMINI_API_KEY ? ["gemini"] : [])]} loadError={Boolean(agentsResult.error || workflowsResult.error)} />
     </main>
   </div>;
 }

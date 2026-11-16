@@ -19,7 +19,7 @@ Nexus is the product surface. Coursewell and Obavenus remain separate source rep
 
 | Capability | Nexus destination | Port boundary |
 | --- | --- | --- |
-| Multi-model assistant and provider selection | Claudia / Assistant | Reuse Nexus provider adapters and OAuth; never ask for provider secrets in the browser |
+| Multi-model assistant and provider selection | Claudia / Assistant | Agent teams can select deployment-configured Claude or Gemini; provider secrets remain server-side. Per-user BYOK/OAuth and OpenAI/Grok adapters are planned |
 | Team agents, custom agent profiles, reusable workflows | Assistant → Agents / Workflows | First-party profiles, three bounded Claude reasoning passes, user-triggered runs (implemented); other providers planned |
 | Scheduled tasks and recurring workflows | Assistant → Schedule | Persist per user; daily Vercel Hobby schedule checks only; text-only, tool-free runs |
 | Project workspaces, instructions, file context, undo | Projects | Per-user project/file access with bounded reads and explicit write approvals |
@@ -30,7 +30,7 @@ Nexus is the product surface. Coursewell and Obavenus remain separate source rep
 
 1. Ship Nexus-owned Study foundations: courses, assignments, planner, Canvas sync, and user-scoped persistence (implemented; Canvas credentials are session-only).
 2. Add uploaded file extraction, generated quizzes, richer assignment plans, and reminders.
-3. Bring Obavenus agent profiles and workflows into Nexus's Assistant (implemented on Nexus Claude); extend to configured providers after per-user provider auth is designed.
+3. Bring Obavenus agent profiles and workflows into Nexus's Assistant (implemented on server-configured Claude/Gemini); add per-user provider auth and more adapters after provider-account isolation is designed.
 4. Add project-local context, browser/MCP tools, and deeper automation after isolation, logging, and approval boundaries are established.
 5. Expand schedule precision and throughput when the deployment plan supports it; Hobby cron checks are daily, not exact-time alarms.
 
