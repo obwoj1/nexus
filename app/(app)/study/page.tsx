@@ -9,7 +9,7 @@ export default async function StudyPage() {
   if (!user) return null;
   const admin = createAdminClient();
   const [coursesResult, assignmentsResult, cardsResult] = await Promise.all([
-    admin.from("study_courses").select("id,name,code,term").eq("user_id", user.id).order("name"),
+    admin.from("study_courses").select("id,name,code,term,source").eq("user_id", user.id).order("name"),
     admin.from("study_assignments").select("id,course_id,title,due_at,details,status").eq("user_id", user.id).order("due_at", { ascending: true, nullsFirst: false }),
     admin.from("study_cards").select("id,course_id,front,back,due_at").eq("user_id", user.id).lte("due_at", new Date().toISOString()).order("due_at").limit(100),
   ]);

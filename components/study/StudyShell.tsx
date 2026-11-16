@@ -2,9 +2,9 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import { BookOpen, CalendarClock, Check, Circle, Plus, Sparkles, Layers3 } from "lucide-react";
-import { createStudyAssignmentAction, createStudyCardAction, createStudyCourseAction, reviewStudyCardAction, toggleStudyAssignmentAction } from "@/app/actions/study";
+import { createStudyAssignmentAction, createStudyCardAction, createStudyCourseAction, reviewStudyCardAction, syncCanvasStudyAction, toggleStudyAssignmentAction } from "@/app/actions/study";
 
-interface Course { id: string; name: string; code: string; term: string }
+interface Course { id: string; name: string; code: string; term: string; source: "manual" | "canvas" }
 interface Assignment { id: string; course_id: string; title: string; due_at: string | null; details: string; status: "todo" | "completed" }
 interface StudyCard { id: string; course_id: string; front: string; back: string; due_at: string }
 
@@ -15,6 +15,7 @@ export function StudyShell({ courses, assignments, cards, loadError }: { courses
   const [message, setMessage] = useState("");
   const [revealed, setRevealed] = useState(false);
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(() => new Set());
+  const [canvasStatus, setCanvasStatus] = useState("");
   const courseNames = new Map(courses.map((course) => [course.id, course]));
   const openAssignments = assignments.filter((item) => item.status === "todo");
   const completedAssignments = assignments.filter((item) => item.status === "completed");
@@ -70,6 +71,18 @@ export function StudyShell({ courses, assignments, cards, loadError }: { courses
     });
   }
 
+  function connectCanvas(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    startTransition(async () => {
+      const result = await syncCanvasStudyAction(String(values.get("canvasOrigin") ?? ""), String(values.get("canvasToken") ?? ""));
+      if (result.error) { setCanvasStatus(result.error); return; }
+      form.reset();
+      setCanvasStatus(`Synced ${result.courseCount} courses and ${result.assignmentCount} assignments for ${result.studentName}. The token was not saved.`);
+    });
+  }
+
   return <div className="space-y-5">
     {loadError && <div role="alert" className="rounded-xl border border-red-400/20 bg-red-400/5 p-4 text-sm text-red-200">Study data couldn’t load. Check that the Study database migration has been applied.</div>}
     {message && <p role="status" className="text-xs" style={{ color: "rgba(245,240,232,.52)" }}>{message}</p>}
@@ -112,6 +125,17 @@ export function StudyShell({ courses, assignments, cards, loadError }: { courses
         </section>
       </div>
     </div>
+    <section className="rounded-2xl p-5 md:p-6" style={surface}>
+      <div className="flex items-center gap-3 mb-2"><div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(200,144,10,.1)", color: "#C8900A" }}><BookOpen className="h-4 w-4" /></div><div><p className="text-[10px] tracking-[.2em] uppercase" style={{ color: "rgba(245,240,232,.4)" }}>COURSE CONNECTION</p><h2 className="text-base font-medium mt-0.5">Canvas</h2></div></div>
+      <p className="text-xs max-w-2xl mb-4" style={{ color: "rgba(245,240,232,.48)" }}>Sync your active courses and assignments into your Nexus planner. Use a read-only access token. Nexus uses it only for this sync, does not save it, and makes read-only Canvas requests.</p>
+      <form onSubmit={connectCanvas} className="grid gap-2 md:grid-cols-[1fr_1fr_auto] items-center">
+        <input required name="canvasOrigin" type="text" maxLength={253} placeholder="school.instructure.com" aria-label="Canvas school address" className="w-full rounded-xl px-3 py-2.5 text-sm bg-white/[.03] border border-white/[.08] outline-none focus:border-amber-400/40" />
+        <input required name="canvasToken" type="password" autoComplete="new-password" maxLength={4096} placeholder="Canvas access token" aria-label="Canvas access token" className="w-full rounded-xl px-3 py-2.5 text-sm bg-white/[.03] border border-white/[.08] outline-none focus:border-amber-400/40" />
+        <button disabled={busy} className="rounded-xl px-4 py-2.5 text-xs font-medium disabled:opacity-50" style={{ background: "#C8900A", color: "#100d07" }}>{busy ? "Syncing…" : "Connect and sync"}</button>
+      </form>
+      {canvasStatus && <p role="status" className="text-xs mt-3" style={{ color: "rgba(245,240,232,.6)" }}>{canvasStatus}</p>}
+      {courses.some((course) => course.source === "canvas") && <p className="text-xs mt-3" style={{ color: "rgba(245,240,232,.42)" }}>{courses.filter((course) => course.source === "canvas").length} Canvas course(s) in your Study space.</p>}
+    </section>
     <section className="rounded-2xl p-5 md:p-6" style={surface}>
       <div className="flex items-center justify-between gap-3 mb-5"><div><p className="text-[10px] tracking-[.2em] uppercase" style={{ color: "rgba(245,240,232,.4)" }}>SPACED REVIEW</p><h2 className="text-lg font-medium mt-1">Flashcards <span className="ml-1 text-sm font-normal opacity-50">{cards.length} due</span></h2></div><Layers3 className="h-5 w-5" style={{ color: "#C8900A" }} /></div>
       <div className="grid gap-5 lg:grid-cols-[1.1fr_.9fr]">

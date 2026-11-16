@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { syncCanvasCourses } from "@/lib/study/canvas";
 
 async function authenticatedUserId() {
   const supabase = await createClient();
@@ -131,5 +132,43 @@ export async function reviewStudyCardAction(id: string, rating: string) {
     return { success: true };
   } catch {
     return { error: "Your session expired. Sign in again and retry." };
+  }
+}
+
+export async function syncCanvasStudyAction(originInput: string, tokenInput: string) {
+  const input = z.object({ origin: z.string().trim().min(1).max(253), token: z.string().trim().min(1).max(4096) })
+    .safeParse({ origin: originInput, token: tokenInput });
+  if (!input.success) return { error: "Enter your Canvas school address and access token." };
+  try {
+    const userId = await authenticatedUserId();
+    const synced = await syncCanvasCourses(input.data.origin, input.data.token);
+    const admin = createAdminClient();
+    const courseRows = synced.courses.map((course) => ({
+      user_id: userId, source: "canvas", external_id: course.id, name: course.name, code: course.code, term: "",
+    }));
+    if (courseRows.length) {
+      const { error } = await admin.from("study_courses").upsert(courseRows, { onConflict: "user_id,external_id" });
+      if (error) return { error: "Canvas was reached, but courses could not be saved." };
+    }
+    const { data: savedCourses, error: readError } = await admin.from("study_courses").select("id,external_id")
+      .eq("user_id", userId).eq("source", "canvas");
+    if (readError) return { error: "Courses synced, but Nexus could not load their IDs." };
+    const courseIds = new Map((savedCourses ?? []).map((course) => [course.external_id, course.id]));
+    const assignmentRows = synced.assignments.flatMap((item) => {
+      const courseId = courseIds.get(item.courseId);
+      return courseId ? [{
+        user_id: userId, course_id: courseId, source: "canvas", external_id: item.id,
+        title: item.title, due_at: item.dueAt, details: item.details, status: item.completed ? "completed" : "todo",
+      }] : [];
+    });
+    for (let offset = 0; offset < assignmentRows.length; offset += 200) {
+      const { error } = await admin.from("study_assignments").upsert(assignmentRows.slice(offset, offset + 200), { onConflict: "user_id,external_id" });
+      if (error) return { error: "Courses synced, but some assignments could not be saved." };
+    }
+    revalidatePath("/study");
+    return { success: true, studentName: synced.studentName, courseCount: courseRows.length, assignmentCount: assignmentRows.length };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Canvas connection failed.";
+    return { error: message.slice(0, 240) };
   }
 }
