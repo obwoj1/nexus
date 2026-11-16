@@ -1,21 +1,23 @@
 "use client";
 
 import { useState, useTransition, type FormEvent } from "react";
-import { BookOpen, CalendarClock, Check, Circle, Plus, Sparkles, Layers3 } from "lucide-react";
-import { createStudyAssignmentAction, createStudyCardAction, createStudyCourseAction, reviewStudyCardAction, syncCanvasStudyAction, toggleStudyAssignmentAction } from "@/app/actions/study";
+import { BookOpen, CalendarClock, Check, Circle, Plus, Sparkles, Layers3, Search } from "lucide-react";
+import { askStudySourcesAction, createStudyAssignmentAction, createStudyCardAction, createStudyCourseAction, createStudySourceAction, reviewStudyCardAction, syncCanvasStudyAction, toggleStudyAssignmentAction } from "@/app/actions/study";
 
 interface Course { id: string; name: string; code: string; term: string; source: "manual" | "canvas" }
 interface Assignment { id: string; course_id: string; title: string; due_at: string | null; details: string; status: "todo" | "completed" }
 interface StudyCard { id: string; course_id: string; front: string; back: string; due_at: string }
+interface StudySource { id: string; course_id: string; title: string; source_name: string; created_at: string }
 
 const surface = { background: "#161210", border: "1px solid rgba(255,235,180,0.08)", boxShadow: "0 4px 24px rgba(0,0,0,0.18)" };
 
-export function StudyShell({ courses, assignments, cards, loadError }: { courses: Course[]; assignments: Assignment[]; cards: StudyCard[]; loadError: boolean }) {
+export function StudyShell({ courses, assignments, cards, sources, loadError }: { courses: Course[]; assignments: Assignment[]; cards: StudyCard[]; sources: StudySource[]; loadError: boolean }) {
   const [busy, startTransition] = useTransition();
   const [message, setMessage] = useState("");
   const [revealed, setRevealed] = useState(false);
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(() => new Set());
   const [canvasStatus, setCanvasStatus] = useState("");
+  const [studyAnswer, setStudyAnswer] = useState("");
   const courseNames = new Map(courses.map((course) => [course.id, course]));
   const openAssignments = assignments.filter((item) => item.status === "todo");
   const completedAssignments = assignments.filter((item) => item.status === "completed");
@@ -83,6 +85,25 @@ export function StudyShell({ courses, assignments, cards, loadError }: { courses
     });
   }
 
+  function submitSource(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    startTransition(async () => {
+      const result = await createStudySourceAction(new FormData(form));
+      setMessage(result.error ?? "Source saved to your private Study library.");
+      if (!result.error) form.reset();
+    });
+  }
+
+  function askStudy(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const question = String(new FormData(event.currentTarget).get("question") ?? "");
+    startTransition(async () => {
+      const result = await askStudySourcesAction(question);
+      setStudyAnswer(result.error ?? result.result ?? "No answer was returned.");
+    });
+  }
+
   return <div className="space-y-5">
     {loadError && <div role="alert" className="rounded-xl border border-red-400/20 bg-red-400/5 p-4 text-sm text-red-200">Study data couldn’t load. Check that the Study database migration has been applied.</div>}
     {message && <p role="status" className="text-xs" style={{ color: "rgba(245,240,232,.52)" }}>{message}</p>}
@@ -135,6 +156,29 @@ export function StudyShell({ courses, assignments, cards, loadError }: { courses
       </form>
       {canvasStatus && <p role="status" className="text-xs mt-3" style={{ color: "rgba(245,240,232,.6)" }}>{canvasStatus}</p>}
       {courses.some((course) => course.source === "canvas") && <p className="text-xs mt-3" style={{ color: "rgba(245,240,232,.42)" }}>{courses.filter((course) => course.source === "canvas").length} Canvas course(s) in your Study space.</p>}
+    </section>
+    <section className="rounded-2xl p-5 md:p-6" style={surface}>
+      <div className="flex items-center gap-2 mb-4"><Search className="h-4 w-4" style={{ color: "#C8900A" }} /><div><p className="text-[10px] tracking-[.2em] uppercase" style={{ color: "rgba(245,240,232,.4)" }}>SOURCE-GROUNDED LEARNING</p><h2 className="text-base font-medium mt-1">Course library and Ask</h2></div></div>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <div>
+          <p className="text-xs mb-3" style={{ color: "rgba(245,240,232,.48)" }}>Paste lecture notes or reading text into a course library. Nexus searches your saved text first, then answers with source markers.</p>
+          {sources.length > 0 && <ul className="mb-4 space-y-1.5">{sources.slice(0, 8).map((source) => <li key={source.id} className="text-xs flex justify-between gap-3"><span className="truncate">{source.title}</span><span className="shrink-0 opacity-40">{source.source_name}</span></li>)}</ul>}
+          {courses.length ? <form onSubmit={submitSource} className="space-y-2">
+            <select required name="courseId" aria-label="Source course" className="w-full rounded-xl px-3 py-2 text-sm bg-[#1b1917] border border-white/[.08] outline-none">{courses.map((course) => <option key={course.id} value={course.id}>{course.code ? `${course.code} · ` : ""}{course.name}</option>)}</select>
+            <input required name="title" maxLength={180} placeholder="Source title" aria-label="Source title" className="w-full rounded-xl px-3 py-2 text-sm bg-white/[.03] border border-white/[.08] outline-none focus:border-amber-400/40" />
+            <textarea required name="content" maxLength={100000} rows={5} placeholder="Paste notes or reading text (up to 100,000 characters)" aria-label="Study source text" className="w-full rounded-xl px-3 py-2 text-sm bg-white/[.03] border border-white/[.08] outline-none focus:border-amber-400/40 resize-y" />
+            <button disabled={busy} className="rounded-xl px-3 py-2 text-xs font-medium disabled:opacity-50" style={{ background: "rgba(200,144,10,.15)", color: "#F5CE58" }}>Save source</button>
+          </form> : <p className="text-xs" style={{ color: "rgba(245,240,232,.45)" }}>Create a course to add study sources.</p>}
+        </div>
+        <div>
+          <form onSubmit={askStudy} className="space-y-2">
+            <label htmlFor="study-question" className="text-sm font-medium">Ask your materials</label>
+            <textarea required minLength={4} maxLength={2000} id="study-question" name="question" rows={3} placeholder="Ask about an idea in your notes…" className="w-full rounded-xl px-3 py-2 text-sm bg-white/[.03] border border-white/[.08] outline-none focus:border-amber-400/40 resize-y" />
+            <button disabled={busy || sources.length === 0} className="rounded-xl px-3 py-2 text-xs font-medium disabled:opacity-50" style={{ background: "#C8900A", color: "#100d07" }}>{busy ? "Searching…" : "Search and ask"}</button>
+          </form>
+          {studyAnswer && <div role="status" className="mt-4 rounded-xl p-4 text-sm whitespace-pre-wrap leading-relaxed" style={{ background: "rgba(255,255,255,.03)", color: "rgba(245,240,232,.82)" }}>{studyAnswer}</div>}
+        </div>
+      </div>
     </section>
     <section className="rounded-2xl p-5 md:p-6" style={surface}>
       <div className="flex items-center justify-between gap-3 mb-5"><div><p className="text-[10px] tracking-[.2em] uppercase" style={{ color: "rgba(245,240,232,.4)" }}>SPACED REVIEW</p><h2 className="text-lg font-medium mt-1">Flashcards <span className="ml-1 text-sm font-normal opacity-50">{cards.length} due</span></h2></div><Layers3 className="h-5 w-5" style={{ color: "#C8900A" }} /></div>
