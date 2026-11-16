@@ -7,20 +7,22 @@ import { createAgentProfileAction, createAgentWorkflowAction, deleteAgentProfile
 
 interface AgentProfile { id: string; name: string; specialty: string; instructions: string; created_at: string }
 interface AgentWorkflow { id: string; name: string; instructions: string; created_at: string }
+interface Project { id: string; name: string }
 const panel = { background: "#161210", border: "1px solid rgba(255,235,180,0.08)", boxShadow: "0 4px 24px rgba(0,0,0,0.18)" };
 
-export function AgentStudio({ agents, workflows, loadError }: { agents: AgentProfile[]; workflows: AgentWorkflow[]; loadError: boolean }) {
+export function AgentStudio({ agents, workflows, projects, loadError }: { agents: AgentProfile[]; workflows: AgentWorkflow[]; projects: Project[]; loadError: boolean }) {
   const router = useRouter();
   const [busy, startTransition] = useTransition();
   const [selected, setSelected] = useState<string[]>(agents.slice(0, 3).map((agent) => agent.id));
   const [task, setTask] = useState("");
+  const [projectId, setProjectId] = useState("");
   const [result, setResult] = useState<{ result: string; contributions: { name: string; specialty: string; response: string }[] } | null>(null);
   const [notice, setNotice] = useState("");
 
   function runTeam(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     startTransition(async () => {
-      const response = await runAgentTeamAction(task, selected);
+      const response = await runAgentTeamAction(task, selected, projectId);
       if (response.error) { setNotice(response.error); return; }
       setNotice("Team run finished. Review the synthesis and specialist notes.");
       setResult({ result: response.result ?? "No response returned.", contributions: response.contributions ?? [] });
@@ -75,7 +77,7 @@ export function AgentStudio({ agents, workflows, loadError }: { agents: AgentPro
         <div className="flex items-center gap-2 mb-2"><Network className="h-4 w-4" style={{ color: "#C8900A" }} /><h2 className="font-medium">Run a specialist team</h2></div>
         <p className="text-xs mb-4" style={{ color: "rgba(245,240,232,.45)" }}>Up to three independent reasoning passes, followed by a synthesis. These agents use the Nexus Claude configuration; they do not access tools, files, or external accounts.</p>
         {agents.length ? <div className="space-y-2 mb-4"><p className="text-[10px] tracking-widest uppercase" style={{ color: "rgba(245,240,232,.4)" }}>YOUR SPECIALISTS · CHOOSE UP TO 3</p>{agents.map((agent) => <label key={agent.id} className="flex items-start gap-3 rounded-xl p-3 cursor-pointer" style={{ background: selected.includes(agent.id) ? "rgba(200,144,10,.08)" : "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.05)" }}><input type="checkbox" checked={selected.includes(agent.id)} onChange={() => toggleSelected(agent.id)} className="mt-0.5 accent-amber-500" /><span className="min-w-0 flex-1"><span className="block text-sm">{agent.name}<span className="ml-2 text-xs opacity-50">{agent.specialty}</span></span><span className="block text-xs mt-1 opacity-45 line-clamp-2">{agent.instructions}</span></span></label>)}{selected.length === 0 && <p className="text-xs opacity-50">No saved specialists selected; the built-in starter team will run.</p>}</div> : <div className="rounded-xl p-3 mb-4 text-xs" style={{ background: "rgba(255,255,255,.025)", color: "rgba(245,240,232,.52)" }}>No saved specialists yet. The built-in Planner, Researcher, and Critical reviewer will form your starter team.</div>}
-        <form onSubmit={runTeam} className="space-y-3"><label htmlFor="agent-task" className="block text-xs font-medium">What should the team work on?</label><textarea id="agent-task" value={task} onChange={(event) => setTask(event.target.value)} minLength={4} maxLength={6000} required rows={5} placeholder="Describe a decision, plan, or question…" className="w-full rounded-xl px-3 py-3 text-sm bg-white/[.03] border border-white/[.08] outline-none focus:border-amber-400/40 resize-y" /><button disabled={busy} className="rounded-xl px-4 py-2.5 text-xs font-semibold disabled:opacity-50" style={{ background: "#C8900A", color: "#100d07" }}>{busy ? "Working…" : "Run team"}</button></form>
+        <form onSubmit={runTeam} className="space-y-3"><label htmlFor="agent-task" className="block text-xs font-medium">What should the team work on?</label><textarea id="agent-task" value={task} onChange={(event) => setTask(event.target.value)} minLength={4} maxLength={6000} required rows={5} placeholder="Describe a decision, plan, or question…" className="w-full rounded-xl px-3 py-3 text-sm bg-white/[.03] border border-white/[.08] outline-none focus:border-amber-400/40 resize-y" />{projects.length > 0 && <label className="block text-xs">Optional project context<select value={projectId} onChange={(event) => setProjectId(event.target.value)} className="mt-2 w-full rounded-xl px-3 py-2.5 text-sm bg-[#1b1917] border border-white/[.08] outline-none"><option value="">No project context</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>}<button disabled={busy} className="rounded-xl px-4 py-2.5 text-xs font-semibold disabled:opacity-50" style={{ background: "#C8900A", color: "#100d07" }}>{busy ? "Working…" : "Run team"}</button><p className="text-[10px] opacity-40">Project text is added only when you select a project. It is reference context, not tool access.</p></form>
         {result && <div className="mt-5 rounded-xl p-4" style={{ background: "rgba(255,255,255,.03)" }}><p className="text-[10px] tracking-widest uppercase mb-2" style={{ color: "#E8B428" }}>SYNTHESIS</p><p className="text-sm leading-relaxed whitespace-pre-wrap">{result.result}</p><details className="mt-4"><summary className="cursor-pointer text-xs flex items-center gap-1 opacity-65"><ChevronDown className="w-3 h-3" />Specialist perspectives</summary><div className="mt-3 space-y-3">{result.contributions.map((item) => <article key={item.name} className="border-t border-white/10 pt-3"><p className="text-xs font-medium">{item.name}<span className="ml-2 opacity-45">{item.specialty}</span></p><p className="text-xs leading-relaxed whitespace-pre-wrap mt-1 opacity-75">{item.response}</p></article>)}</div></details></div>}
       </section>
 
