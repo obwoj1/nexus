@@ -51,6 +51,41 @@ export async function deleteAgentProfileAction(id: string) {
   }
 }
 
+const workflowSchema = z.object({ name: z.string().trim().min(1).max(80), instructions: z.string().trim().min(1).max(3000) });
+
+export async function createAgentWorkflowAction(form: FormData) {
+  const parsed = workflowSchema.safeParse({ name: form.get("name"), instructions: form.get("instructions") });
+  if (!parsed.success) return { error: "Add a name and workflow instructions." };
+  try {
+    const userId = await currentUserId();
+    const admin = createAdminClient();
+    const { count, error: countError } = await admin.from("nexus_agent_workflows").select("id", { count: "exact", head: true }).eq("user_id", userId);
+    if (countError) return { error: "Workflows are unavailable. Apply the Nexus workflow migration first." };
+    if ((count ?? 0) >= 30) return { error: "You can save up to 30 workflows." };
+    const { error } = await admin.from("nexus_agent_workflows").insert({ user_id: userId, ...parsed.data });
+    if (error) return { error: "Could not save this workflow. Names must be unique in your workspace." };
+    revalidatePath("/agents");
+    return { success: true };
+  } catch {
+    return { error: "Your session expired. Sign in again and retry." };
+  }
+}
+
+export async function deleteAgentWorkflowAction(id: string) {
+  const parsed = z.string().uuid().safeParse(id);
+  if (!parsed.success) return { error: "Invalid workflow." };
+  try {
+    const userId = await currentUserId();
+    const admin = createAdminClient();
+    const { error } = await admin.from("nexus_agent_workflows").delete().eq("id", parsed.data).eq("user_id", userId);
+    if (error) return { error: "Could not delete this workflow." };
+    revalidatePath("/agents");
+    return { success: true };
+  } catch {
+    return { error: "Your session expired. Sign in again and retry." };
+  }
+}
+
 const starterTeam = [
   { name: "Planner", specialty: "Turn the request into an ordered, practical plan", instructions: "Identify the goal, constraints, dependencies, and a short sequence of actionable steps." },
   { name: "Researcher", specialty: "Find assumptions, information gaps, and useful evidence", instructions: "Analyze what is known, state important assumptions, and identify what evidence or details would improve the result." },

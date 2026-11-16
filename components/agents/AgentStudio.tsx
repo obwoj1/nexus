@@ -3,12 +3,13 @@
 import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronDown, Network, Plus, Trash2 } from "lucide-react";
-import { createAgentProfileAction, deleteAgentProfileAction, runAgentTeamAction } from "@/app/actions/agents";
+import { createAgentProfileAction, createAgentWorkflowAction, deleteAgentProfileAction, deleteAgentWorkflowAction, runAgentTeamAction } from "@/app/actions/agents";
 
 interface AgentProfile { id: string; name: string; specialty: string; instructions: string; created_at: string }
+interface AgentWorkflow { id: string; name: string; instructions: string; created_at: string }
 const panel = { background: "#161210", border: "1px solid rgba(255,235,180,0.08)", boxShadow: "0 4px 24px rgba(0,0,0,0.18)" };
 
-export function AgentStudio({ agents, loadError }: { agents: AgentProfile[]; loadError: boolean }) {
+export function AgentStudio({ agents, workflows, loadError }: { agents: AgentProfile[]; workflows: AgentWorkflow[]; loadError: boolean }) {
   const router = useRouter();
   const [busy, startTransition] = useTransition();
   const [selected, setSelected] = useState<string[]>(agents.slice(0, 3).map((agent) => agent.id));
@@ -44,6 +45,24 @@ export function AgentStudio({ agents, loadError }: { agents: AgentProfile[]; loa
     });
   }
 
+  function saveWorkflow(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    startTransition(async () => {
+      const response = await createAgentWorkflowAction(new FormData(form));
+      setNotice(response.error ?? "Workflow saved.");
+      if (!response.error) { form.reset(); router.refresh(); }
+    });
+  }
+
+  function deleteWorkflow(id: string) {
+    startTransition(async () => {
+      const response = await deleteAgentWorkflowAction(id);
+      setNotice(response.error ?? "Workflow removed.");
+      if (!response.error) router.refresh();
+    });
+  }
+
   function toggleSelected(id: string) {
     setSelected((current) => current.includes(id) ? current.filter((value) => value !== id) : current.length < 3 ? [...current, id] : current);
   }
@@ -67,5 +86,12 @@ export function AgentStudio({ agents, loadError }: { agents: AgentProfile[]; loa
         <form onSubmit={createProfile} className="space-y-2"><input required name="name" maxLength={60} placeholder="Name · e.g. Product reviewer" aria-label="Agent name" className="w-full rounded-xl px-3 py-2 text-sm bg-white/[.03] border border-white/[.08] outline-none focus:border-amber-400/40" /><input required name="specialty" maxLength={120} placeholder="Specialty" aria-label="Agent specialty" className="w-full rounded-xl px-3 py-2 text-sm bg-white/[.03] border border-white/[.08] outline-none focus:border-amber-400/40" /><textarea required name="instructions" maxLength={1800} rows={4} placeholder="What should this specialist focus on?" aria-label="Agent instructions" className="w-full rounded-xl px-3 py-2 text-sm bg-white/[.03] border border-white/[.08] outline-none focus:border-amber-400/40 resize-y" /><button disabled={busy || agents.length >= 12} className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium disabled:opacity-50" style={{ background: "rgba(200,144,10,.15)", color: "#F5CE58" }}><Plus className="h-3.5 w-3.5" />Save specialist</button><p className="text-[10px] opacity-40">{agents.length}/12 saved</p></form>
       </section>
     </div>
+    <section className="rounded-2xl p-5 md:p-6" style={panel}>
+      <div className="flex items-center gap-2 mb-2"><Check className="h-4 w-4" style={{ color: "#C8900A" }} /><h2 className="font-medium">Reusable workflows</h2></div>
+      <p className="text-xs mb-4" style={{ color: "rgba(245,240,232,.45)" }}>Save repeatable task briefs, then load one into the team composer and review it before every run.</p>
+      {workflows.length > 0 && <ul className="grid gap-2 md:grid-cols-2 mb-5">{workflows.map((workflow) => <li key={workflow.id} className="rounded-xl p-3 flex items-start gap-3" style={{ background: "rgba(255,255,255,.025)" }}><div className="min-w-0 flex-1"><p className="text-sm">{workflow.name}</p><p className="text-xs mt-1 opacity-45 line-clamp-2">{workflow.instructions}</p></div><button type="button" onClick={() => { setTask(workflow.instructions); document.querySelector<HTMLTextAreaElement>("#agent-task")?.focus(); }} className="text-xs shrink-0" style={{ color: "#E8B428" }}>Use</button><button type="button" disabled={busy} onClick={() => deleteWorkflow(workflow.id)} aria-label={`Delete ${workflow.name}`} className="opacity-40 hover:opacity-100"><Trash2 className="h-4 w-4" /></button></li>)}</ul>}
+      <form onSubmit={saveWorkflow} className="grid gap-2 md:grid-cols-[.7fr_1.3fr_auto] items-start"><input required name="name" maxLength={80} placeholder="Workflow name" aria-label="Workflow name" className="w-full rounded-xl px-3 py-2 text-sm bg-white/[.03] border border-white/[.08] outline-none focus:border-amber-400/40" /><textarea required name="instructions" maxLength={3000} rows={2} placeholder="Describe the repeatable task brief" aria-label="Workflow instructions" className="w-full rounded-xl px-3 py-2 text-sm bg-white/[.03] border border-white/[.08] outline-none focus:border-amber-400/40 resize-y" /><button disabled={busy || workflows.length >= 30} className="rounded-xl px-3 py-2 text-xs font-medium disabled:opacity-50" style={{ background: "rgba(200,144,10,.15)", color: "#F5CE58" }}>Save workflow</button></form>
+      <p className="text-[10px] opacity-40 mt-2">{workflows.length}/30 saved. Workflows only fill the task prompt; they do not run until you choose Run team.</p>
+    </section>
   </div>;
 }
