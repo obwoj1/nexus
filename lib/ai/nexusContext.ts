@@ -22,7 +22,7 @@ export async function buildNexusContext(userId: string, today: string, tz: strin
 
   const [
     habits, habitLogs, subscriptions, goals, reading, health, dates,
-    holdings, sessions, notes,
+    holdings, sessions, notes, studyCourses, studyAssignments,
   ] = await Promise.all([
     admin.from("habits").select("*").eq("user_id", userId),
     admin.from("habit_logs").select("habit_id, date").eq("user_id", userId).gte("date", daysAgo(60, tz)),
@@ -34,6 +34,8 @@ export async function buildNexusContext(userId: string, today: string, tz: strin
     admin.from("holdings").select("ticker, name, asset_type, quantity, cost_basis").eq("user_id", userId),
     admin.from("workout_sessions").select("id, name, started_at, duration_minutes").eq("user_id", userId).order("started_at", { ascending: false }).limit(10),
     admin.from("notes").select("title, updated_at").eq("user_id", userId).order("updated_at", { ascending: false }).limit(8),
+    admin.from("study_courses").select("id,name,code").eq("user_id", userId).limit(40),
+    admin.from("study_assignments").select("course_id,title,due_at,status").eq("user_id", userId).eq("status", "todo").order("due_at", { ascending: true, nullsFirst: false }).limit(30),
   ]);
 
   // ── Habits ───────────────────────────────────────────────────────────────
@@ -111,6 +113,13 @@ export async function buildNexusContext(userId: string, today: string, tz: strin
     `  - "${n.title}" (updated ${new Date(n.updated_at).toLocaleDateString("en-US", { timeZone: tz, month: "short", day: "numeric" })})`
   ).join("\n") || "  None";
 
+  const courseById = new Map((studyCourses.data ?? []).map((course) => [course.id, course]));
+  const studyLines = (studyAssignments.data ?? []).map((item) => {
+    const course = courseById.get(item.course_id);
+    const due = item.due_at ? new Date(item.due_at).toLocaleString("en-US", { timeZone: tz, weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "no due date";
+    return `  - ${item.title} — ${course?.code || course?.name || "Course"} — ${due}`;
+  }).join("\n") || "  No open study assignments";
+
   // ── Calendar (best-effort — may not have token) ───────────────────────────
   let calendarSection = "  Not available";
   try {
@@ -166,6 +175,9 @@ ${recentWorkouts}
 
 RECENT NOTES:
 ${noteLines}
+
+COURSES AND UPCOMING STUDY WORK:
+${studyLines}
 
 CALENDAR (next 7 days):
 ${calendarSection}
