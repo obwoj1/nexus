@@ -1,20 +1,24 @@
 "use client";
 
 import { useState, useTransition, type FormEvent } from "react";
-import { BookOpen, CalendarClock, Check, Circle, Plus, Sparkles } from "lucide-react";
-import { createStudyAssignmentAction, createStudyCourseAction, toggleStudyAssignmentAction } from "@/app/actions/study";
+import { BookOpen, CalendarClock, Check, Circle, Plus, Sparkles, Layers3 } from "lucide-react";
+import { createStudyAssignmentAction, createStudyCardAction, createStudyCourseAction, reviewStudyCardAction, toggleStudyAssignmentAction } from "@/app/actions/study";
 
 interface Course { id: string; name: string; code: string; term: string }
 interface Assignment { id: string; course_id: string; title: string; due_at: string | null; details: string; status: "todo" | "completed" }
+interface StudyCard { id: string; course_id: string; front: string; back: string; due_at: string }
 
 const surface = { background: "#161210", border: "1px solid rgba(255,235,180,0.08)", boxShadow: "0 4px 24px rgba(0,0,0,0.18)" };
 
-export function StudyShell({ courses, assignments, loadError }: { courses: Course[]; assignments: Assignment[]; loadError: boolean }) {
+export function StudyShell({ courses, assignments, cards, loadError }: { courses: Course[]; assignments: Assignment[]; cards: StudyCard[]; loadError: boolean }) {
   const [busy, startTransition] = useTransition();
   const [message, setMessage] = useState("");
+  const [revealed, setRevealed] = useState(false);
+  const [reviewedIds, setReviewedIds] = useState<Set<string>>(() => new Set());
   const courseNames = new Map(courses.map((course) => [course.id, course]));
   const openAssignments = assignments.filter((item) => item.status === "todo");
   const completedAssignments = assignments.filter((item) => item.status === "completed");
+  const nextCard = cards.find((item) => !reviewedIds.has(item.id));
 
   function submitCourse(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,6 +46,27 @@ export function StudyShell({ courses, assignments, loadError }: { courses: Cours
     startTransition(async () => {
       const result = await toggleStudyAssignmentAction(item.id, item.status === "todo");
       setMessage(result.error ?? (item.status === "todo" ? "Marked complete." : "Reopened assignment."));
+    });
+  }
+
+  function submitCard(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    startTransition(async () => {
+      const result = await createStudyCardAction(new FormData(form));
+      setMessage(result.error ?? "Flashcard added to today’s review.");
+      if (!result.error) form.reset();
+    });
+  }
+
+  function rateCard(rating: "again" | "hard" | "good" | "easy") {
+    if (!nextCard) return;
+    startTransition(async () => {
+      const result = await reviewStudyCardAction(nextCard.id, rating);
+      if (result.error) { setMessage(result.error); return; }
+      setReviewedIds((current) => new Set(current).add(nextCard.id));
+      setRevealed(false);
+      setMessage("Review saved.");
     });
   }
 
@@ -87,5 +112,25 @@ export function StudyShell({ courses, assignments, loadError }: { courses: Cours
         </section>
       </div>
     </div>
+    <section className="rounded-2xl p-5 md:p-6" style={surface}>
+      <div className="flex items-center justify-between gap-3 mb-5"><div><p className="text-[10px] tracking-[.2em] uppercase" style={{ color: "rgba(245,240,232,.4)" }}>SPACED REVIEW</p><h2 className="text-lg font-medium mt-1">Flashcards <span className="ml-1 text-sm font-normal opacity-50">{cards.length} due</span></h2></div><Layers3 className="h-5 w-5" style={{ color: "#C8900A" }} /></div>
+      <div className="grid gap-5 lg:grid-cols-[1.1fr_.9fr]">
+        <div>
+          {nextCard ? <div className="rounded-2xl min-h-44 p-6 flex flex-col items-center justify-center text-center" style={{ background: "rgba(255,255,255,.035)", border: "1px solid rgba(255,235,180,.08)" }}>
+            <p className="text-[10px] tracking-widest uppercase mb-4" style={{ color: "rgba(245,240,232,.4)" }}>{revealed ? "ANSWER" : "QUESTION"} · {courseNames.get(nextCard.course_id)?.code || courseNames.get(nextCard.course_id)?.name || "Course"}</p>
+            <p className="text-base leading-relaxed whitespace-pre-wrap">{revealed ? nextCard.back : nextCard.front}</p>
+            {!revealed && <button type="button" onClick={() => setRevealed(true)} className="mt-5 rounded-xl px-4 py-2 text-xs" style={{ background: "rgba(200,144,10,.14)", color: "#F5CE58" }}>Reveal answer</button>}
+            {revealed && <div className="flex flex-wrap justify-center gap-2 mt-5">{(["again", "hard", "good", "easy"] as const).map((rating) => <button type="button" key={rating} disabled={busy} onClick={() => rateCard(rating)} className="rounded-xl border border-white/10 px-3 py-2 text-xs capitalize hover:bg-white/5 disabled:opacity-40">{rating}</button>)}</div>}
+          </div> : <div className="rounded-2xl min-h-44 p-6 flex flex-col items-center justify-center text-center" style={{ background: "rgba(255,255,255,.025)" }}><Check className="h-5 w-5 text-emerald-400 mb-2" /><p className="text-sm">You’re up to date.</p><p className="text-xs mt-1" style={{ color: "rgba(245,240,232,.42)" }}>New cards start in today’s review.</p></div>}
+        </div>
+        <form onSubmit={submitCard} className="space-y-2">
+          <p className="text-sm font-medium mb-3">Create a flashcard</p>
+          {courses.length ? <select required name="courseId" aria-label="Flashcard course" className="w-full rounded-xl px-3 py-2 text-sm bg-[#1b1917] border border-white/[.08] outline-none">{courses.map((course) => <option key={course.id} value={course.id}>{course.code ? `${course.code} · ` : ""}{course.name}</option>)}</select> : <p className="text-xs" style={{ color: "rgba(245,240,232,.45)" }}>Create a course first.</p>}
+          <textarea required name="front" maxLength={2000} rows={2} placeholder="Question or term" aria-label="Flashcard question" className="w-full rounded-xl px-3 py-2 text-sm bg-white/[.03] border border-white/[.08] outline-none focus:border-amber-400/40 resize-y" />
+          <textarea required name="back" maxLength={5000} rows={3} placeholder="Answer or definition" aria-label="Flashcard answer" className="w-full rounded-xl px-3 py-2 text-sm bg-white/[.03] border border-white/[.08] outline-none focus:border-amber-400/40 resize-y" />
+          <button disabled={busy || courses.length === 0} className="rounded-xl px-3 py-2 text-xs font-medium disabled:opacity-50" style={{ background: "rgba(200,144,10,.15)", color: "#F5CE58" }}>Add flashcard</button>
+        </form>
+      </div>
+    </section>
   </div>;
 }
