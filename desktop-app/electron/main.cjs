@@ -2,7 +2,6 @@ const { app, BrowserWindow, ipcMain, Menu, shell } = require("electron");
 const log = require("electron-log/main");
 const path = require("node:path");
 const { getOAuthRedirectForOrigin, isAllowedGoogleOAuthUrl, parseOAuthCallback } = require("./oauth.cjs");
-const { sanitizeCoursewellContext } = require("./coursewell-context.cjs");
 
 const NEXUS_URL = process.env.NEXUS_DESKTOP_URL || "https://nexus-kappa-henna.vercel.app";
 const APP_ORIGIN = new URL(NEXUS_URL).origin;
@@ -12,7 +11,6 @@ const COURSEWELL_ORIGIN = new URL(COURSEWELL_URL).origin;
 let mainWindow;
 let pendingNexusCallback;
 let pendingCoursewellCallback;
-let coursewellContext;
 const coursewellWindows = new Set();
 
 function hasOrigin(rawUrl, origin) {
@@ -195,16 +193,6 @@ if (!hasLock) {
         throw new Error("The sign-in request did not match an approved Google OAuth flow.");
       }
       await shell.openExternal(rawUrl);
-    });
-    ipcMain.handle("desktop:coursewell-context:share", (event, payload) => {
-      if (!hasOrigin(event.senderFrame?.url, COURSEWELL_ORIGIN)) throw new Error("Coursewell context can only be shared from the Coursewell window.");
-      coursewellContext = sanitizeCoursewellContext(payload);
-      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("desktop:coursewell-context", coursewellContext);
-      return true;
-    });
-    ipcMain.handle("desktop:coursewell-context:get", (event) => {
-      if (!hasOrigin(event.senderFrame?.url, APP_ORIGIN)) throw new Error("Study context is only available to Nexus.");
-      return coursewellContext || null;
     });
     Menu.setApplicationMenu(Menu.buildFromTemplate([
       {
